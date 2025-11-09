@@ -21,7 +21,7 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Role name is required")
+    @NotBlank(message = "Se requiere un nombre para el rol")
     @Column(unique = true, nullable = false, length = 50)
     private String name;
 

@@ -30,13 +30,13 @@ public class User {
     @Column(unique = true, nullable = false, length = 50)
     private String username;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email should be valid")
+    @NotBlank(message = "Se requiere un Email")
+    @Email(message = "El Email debe ser válido")
     @Column(unique = true, nullable = false, length = 100)
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @NotBlank(message = "Se requiere contraseña")
+    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
     @Column(nullable = false)
     private String password;
 
@@ -73,7 +73,7 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // Helper methods
+    // métodos helper
     public void addRole(Role role) {
         this.roles.add(role);
         role.getUsers().add(this);
