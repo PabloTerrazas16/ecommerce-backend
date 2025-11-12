@@ -1,131 +1,162 @@
 package com.ecommerce.levelup.payment.service;
 
-import com.ecommerce.levelup.payment.dto.*;
+import com.ecommerce.levelup.payment.dto.PaymentDTO;
+import com.ecommerce.levelup.payment.dto.ProcessPaymentRequest;
 import com.ecommerce.levelup.payment.model.Payment;
 import com.ecommerce.levelup.payment.repository.PaymentRepository;
 import com.ecommerce.levelup.security.JwtUtil;
 import com.ecommerce.levelup.user.model.User;
 import com.ecommerce.levelup.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@RequiredArgsConstructor
 public class PaymentService {
 
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
     /**
-     * Generar token de pago
+     * Iniciar pago
      */
-    public PaymentTokenResponse generatePaymentToken(PaymentTokenRequest request) {
-        // Validar usuario
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + request.getUserId()));
+    @Transactional
+    public Map<String, Object> initiatePayment(PaymentDTO paymentDTO) {
+        // Obtener usuario autenticado
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Generar ID único de pago
-        String paymentId = UUID.randomUUID().toString();
+        // Validar monto
+        if (paymentDTO.getTotalAmount() == null || paymentDTO.getTotalAmount().doubleValue() <= 0) {
+            throw new RuntimeException("El monto total debe ser mayor a 0");
+        }
 
-        // Crear registro de pago pendiente
+        // Validar productos
+        if (paymentDTO.getProducts() == null || paymentDTO.getProducts().isEmpty()) {
+            throw new RuntimeException("Debe incluir al menos un producto");
+        }
+
+        // Crear pago
         Payment payment = new Payment();
         payment.setUserId(user.getId());
-        payment.setUserEmail(user.getEmail());
-        payment.setUserName(user.getFullName());
-        payment.setProductsJson(request.getProductsJson());
-        payment.setTotalAmount(request.getTotalAmount());
-        payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setStatus(Payment.STATUS_PENDING);
-        payment.setStatusMessage("Payment token generated, awaiting processing");
-        payment.setTransactionId(paymentId);
+        payment.setUserEmail(paymentDTO.getUserEmail() != null ? paymentDTO.getUserEmail() : user.getEmail());
+        payment.setUserName(paymentDTO.getUserName() != null ? paymentDTO.getUserName() :
+                user.getFirstName() + " " + user.getLastName());
+        payment.setTotalAmount(paymentDTO.getTotalAmount());
+        payment.setPaymentMethod(paymentDTO.getPaymentMethod());
+        payment.setStatus("PENDIENTE");
+        payment.setShippingAddress(paymentDTO.getShippingAddress());
+        payment.setShippingCity(paymentDTO.getShippingCity());
+        payment.setShippingCountry(paymentDTO.getShippingCountry());
+        payment.setShippingPostalCode(paymentDTO.getShippingPostalCode());
+        payment.setShippingPhone(paymentDTO.getShippingPhone());
+        payment.setShippingCost(paymentDTO.getShippingCost());
+        payment.setTaxAmount(paymentDTO.getTaxAmount());
+        payment.setCreatedAt(LocalDateTime.now());
 
-        // Generar token JWT de pago
-        String paymentToken = jwtUtil.generatePaymentToken(
-                user.getId(),
-                paymentId,
-                request.getTotalAmount().doubleValue()
-        );
+        // Convertir productos a JSON
+        try {
+            String productsJson = objectMapper.writeValueAsString(paymentDTO.getProducts());
+            payment.setProductsJson(productsJson);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error al procesar los productos");
+        }
 
+        // Generar token de pago
+        String paymentToken = jwtUtil.generatePaymentToken(payment.getId(), user.getUsername());
         payment.setPaymentToken(paymentToken);
 
-        // Guardar pago
-        paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
 
         // Preparar respuesta
-        PaymentTokenResponse response = new PaymentTokenResponse();
-        response.setPaymentToken(paymentToken);
-        response.setExpiresIn(jwtUtil.getExpirationTime(JwtUtil.TokenType.PAYMENT));
-        response.setMessage("Payment token generated successfully. Token is valid for " +
-                (jwtUtil.getExpirationTime(JwtUtil.TokenType.PAYMENT) / 60000) + " minutes.");
+        Map<String, Object> response = new HashMap<>();
+        response.put("pagoId", saved.getId());
+        response.put("tokenPago", paymentToken);
+        response.put("estado", saved.getStatus());
+        response.put("montoTotal", saved.getTotalAmount());
+        response.put("mensaje", "Pago iniciado exitosamente. Use el token para confirmar el pago.");
 
         return response;
     }
 
     /**
-     * Procesar pago
+     * Confirmar pago
      */
-    public PaymentDTO processPayment(ProcessPaymentRequest request) {
+    @Transactional
+    public Map<String, Object> confirmPayment(Long paymentId, ProcessPaymentRequest request, String paymentToken) {
         // Validar token de pago
-        if (!jwtUtil.validatePaymentToken(request.getPaymentToken())) {
-            throw new RuntimeException("Invalid or expired payment token");
+        String cleanToken = paymentToken.replace("Bearer ", "");
+        if (!jwtUtil.validatePaymentToken(cleanToken)) {
+            throw new RuntimeException("Token de pago inválido o expirado");
         }
 
-        // Buscar pago por token
-        Payment payment = paymentRepository.findByPaymentToken(request.getPaymentToken())
-                .orElseThrow(() -> new RuntimeException("Payment not found for token"));
+        // Buscar pago
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + paymentId));
 
-        // Verificar que el pago esté en estado PENDING
-        if (!payment.getStatus().equals(Payment.STATUS_PENDING)) {
-            throw new RuntimeException("Payment already processed or cancelled");
+        // Validar que el pago esté pendiente
+        if (!"PENDIENTE".equals(payment.getStatus())) {
+            throw new RuntimeException("El pago ya fue procesado o cancelado");
         }
 
-        try {
-            // Aquí iría la lógica real de procesamiento de pago
-            // Por ahora, simulamos un pago exitoso
+        // Validar token corresponde a este pago
+        if (!cleanToken.equals(payment.getPaymentToken())) {
+            throw new RuntimeException("El token no corresponde a este pago");
+        }
 
-            // Actualizar información de pago
-            if (request.getCardNumber() != null) {
-                payment.setCardLastFourDigits(request.getCardNumber().substring(
-                        Math.max(0, request.getCardNumber().length() - 4)));
-            }
+        // Simular procesamiento de pago
+        // En producción, aquí se integraría con un gateway de pago real
+        boolean paymentSuccess = processPaymentSimulation(request);
 
-            payment.setShippingAddress(request.getShippingAddress());
-            payment.setShippingCity(request.getShippingCity());
-            payment.setShippingCountry(request.getShippingCountry());
-            payment.setShippingPostalCode(request.getShippingPostalCode());
-            payment.setShippingPhone(request.getShippingPhone());
-            payment.setNotes(request.getNotes());
-
-            // Marcar como completado
-            payment.setStatus(Payment.STATUS_COMPLETED);
-            payment.setStatusMessage("Payment processed successfully");
+        if (paymentSuccess) {
+            payment.setStatus("COMPLETADO");
+            payment.setStatusMessage("Pago procesado exitosamente");
+            payment.setTransactionId("TXN-" + UUID.randomUUID().toString());
             payment.setCompletedAt(LocalDateTime.now());
-
-            // Guardar
-            Payment processedPayment = paymentRepository.save(payment);
-
-            return convertToDTO(processedPayment);
-
-        } catch (Exception e) {
-            // Si hay error, marcar como fallido
-            payment.setStatus(Payment.STATUS_FAILED);
-            payment.setStatusMessage("Payment processing failed: " + e.getMessage());
-            paymentRepository.save(payment);
-
-            throw new RuntimeException("Payment processing failed: " + e.getMessage());
+            payment.setCardType(request.getCardType());
+            payment.setCardLastFourDigits(request.getCardNumber().substring(request.getCardNumber().length() - 4));
+        } else {
+            payment.setStatus("FALLIDO");
+            payment.setStatusMessage("El pago fue rechazado. Verifique los datos de su tarjeta.");
         }
+
+        Payment updated = paymentRepository.save(payment);
+
+        // Preparar respuesta
+        Map<String, Object> response = new HashMap<>();
+        response.put("exitoso", paymentSuccess);
+        response.put("mensaje", updated.getStatusMessage());
+        response.put("idTransaccion", updated.getTransactionId());
+        response.put("estado", updated.getStatus());
+
+        return response;
+    }
+
+    /**
+     * Obtener pagos del usuario autenticado
+     */
+    public List<PaymentDTO> getUserPayments() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return paymentRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -133,42 +164,28 @@ public class PaymentService {
      */
     public PaymentDTO getPaymentById(Long id) {
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Payment not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + id));
+
+        // Verificar que el usuario autenticado sea el dueño del pago o sea ADMIN
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+
+        if (!payment.getUserId().equals(user.getId()) && !isAdmin) {
+            throw new RuntimeException("No tiene permiso para ver este pago");
+        }
+
         return convertToDTO(payment);
-    }
-
-    /**
-     * Obtener pagos de un usuario
-     */
-    public List<PaymentDTO> getUserPayments(Long userId) {
-        return paymentRepository.findByUserId(userId).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Obtener historial de pagos de un usuario
-     */
-    public List<PaymentDTO> getUserPaymentHistory(Long userId) {
-        return paymentRepository.findUserPaymentHistory(userId).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Obtener pagos por estado
-     */
-    public List<PaymentDTO> getPaymentsByStatus(String status) {
-        return paymentRepository.findByStatus(status).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
     }
 
     /**
      * Obtener todos los pagos
      */
     public List<PaymentDTO> getAllPayments() {
-        return paymentRepository.findAll().stream()
+        return paymentRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -176,39 +193,33 @@ public class PaymentService {
     /**
      * Reembolsar pago
      */
-    public PaymentDTO refundPayment(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+    @Transactional
+    public void refundPayment(Long id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + id));
 
-        if (!payment.getStatus().equals(Payment.STATUS_COMPLETED)) {
-            throw new RuntimeException("Only completed payments can be refunded");
+        if (!"COMPLETADO".equals(payment.getStatus())) {
+            throw new RuntimeException("Solo se pueden reembolsar pagos completados");
         }
 
-        // Procesar reembolso (aquí iría la lógica real)
-        payment.setStatus(Payment.STATUS_REFUNDED);
-        payment.setStatusMessage("Payment refunded");
-        payment.setRefundedAt(LocalDateTime.now());
+        if (payment.getRefundedAt() != null) {
+            throw new RuntimeException("Este pago ya fue reembolsado");
+        }
 
-        Payment refundedPayment = paymentRepository.save(payment);
-        return convertToDTO(refundedPayment);
+        payment.setStatus("REEMBOLSADO");
+        payment.setRefundedAt(LocalDateTime.now());
+        payment.setStatusMessage("Pago reembolsado exitosamente");
+        paymentRepository.save(payment);
     }
 
     /**
-     * Cancelar pago
+     * Simulación de procesamiento de pago
      */
-    public PaymentDTO cancelPayment(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
-
-        if (!payment.getStatus().equals(Payment.STATUS_PENDING)) {
-            throw new RuntimeException("Only pending payments can be cancelled");
-        }
-
-        payment.setStatus(Payment.STATUS_CANCELLED);
-        payment.setStatusMessage("Payment cancelled by user");
-
-        Payment cancelledPayment = paymentRepository.save(payment);
-        return convertToDTO(cancelledPayment);
+    private boolean processPaymentSimulation(ProcessPaymentRequest request) {
+        // Simulación simple: validar que la tarjeta tenga 16 dígitos
+        // En producción, esto sería una llamada a un gateway de pago real
+        return request.getCardNumber() != null &&
+                request.getCardNumber().replaceAll("\\s", "").length() == 16;
     }
 
     /**
@@ -220,26 +231,32 @@ public class PaymentService {
         dto.setUserId(payment.getUserId());
         dto.setUserEmail(payment.getUserEmail());
         dto.setUserName(payment.getUserName());
-        dto.setProductsJson(payment.getProductsJson());
         dto.setTotalAmount(payment.getTotalAmount());
-        dto.setTaxAmount(payment.getTaxAmount());
-        dto.setShippingCost(payment.getShippingCost());
         dto.setPaymentMethod(payment.getPaymentMethod());
-        dto.setCardLastFourDigits(payment.getCardLastFourDigits());
-        dto.setCardType(payment.getCardType());
-        dto.setTransactionId(payment.getTransactionId());
-        dto.setPaymentToken(payment.getPaymentToken());
         dto.setStatus(payment.getStatus());
         dto.setStatusMessage(payment.getStatusMessage());
+        dto.setTransactionId(payment.getTransactionId());
         dto.setShippingAddress(payment.getShippingAddress());
         dto.setShippingCity(payment.getShippingCity());
         dto.setShippingCountry(payment.getShippingCountry());
         dto.setShippingPostalCode(payment.getShippingPostalCode());
         dto.setShippingPhone(payment.getShippingPhone());
+        dto.setShippingCost(payment.getShippingCost());
+        dto.setTaxAmount(payment.getTaxAmount());
         dto.setCreatedAt(payment.getCreatedAt());
         dto.setCompletedAt(payment.getCompletedAt());
         dto.setRefundedAt(payment.getRefundedAt());
-        dto.setNotes(payment.getNotes());
+
+        // Convertir JSON de productos de vuelta a lista
+        if (payment.getProductsJson() != null) {
+            try {
+                List<?> products = objectMapper.readValue(payment.getProductsJson(), List.class);
+                dto.setProducts(products);
+            } catch (JsonProcessingException e) {
+                // Ignorar error
+            }
+        }
+
         return dto;
     }
 }

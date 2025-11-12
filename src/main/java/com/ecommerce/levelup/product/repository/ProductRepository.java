@@ -1,56 +1,40 @@
 package com.ecommerce.levelup.product.repository;
 
+import com.ecommerce.levelup.product.model.Category;
 import com.ecommerce.levelup.product.model.Product;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    // Buscar por categoría
+    List<Product> findByCategory(Category category);
+
+    // Buscar productos activos
     List<Product> findByActiveTrue();
 
-    Page<Product> findByActiveTrue(Pageable pageable);
+    // Verificar si existe un SKU
+    boolean existsBySku(String sku);
 
-    List<Product> findByCategoryId(Long categoryId);
+    // Buscar productos por nombre o descripción (búsqueda)
+    @Query("SELECT p FROM Product p WHERE " +
+           "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.brand) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<Product> searchProducts(@Param("query") String query);
 
-    Page<Product> findByCategoryIdAndActiveTrue(Long categoryId, Pageable pageable);
+    // Buscar por categoría y activo
+    List<Product> findByCategoryAndActiveTrue(Category category);
 
-    List<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice);
-
-    @Query("SELECT p FROM Product p WHERE p.active = true AND " +
-            "(LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.brand) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    List<Product> searchProducts(@Param("keyword") String keyword);
-
-    @Query("SELECT p FROM Product p WHERE p.active = true AND " +
-            "(LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.brand) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Product> searchProducts(@Param("keyword") String keyword, Pageable pageable);
-
+    // Buscar por marca
     List<Product> findByBrand(String brand);
 
-    Optional<Product> findBySku(String sku);
-
-    Boolean existsBySku(String sku);
-
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.stock > 0")
-    List<Product> findAvailableProducts();
-
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.category.id = :categoryId AND " +
-            "p.price BETWEEN :minPrice AND :maxPrice")
-    List<Product> findByCategoryAndPriceRange(
-            @Param("categoryId") Long categoryId,
-            @Param("minPrice") BigDecimal minPrice,
-            @Param("maxPrice") BigDecimal maxPrice
-    );
+    // Buscar productos con stock bajo
+    @Query("SELECT p FROM Product p WHERE p.stock < :minStock AND p.active = true")
+    List<Product> findLowStockProducts(@Param("minStock") Integer minStock);
 }

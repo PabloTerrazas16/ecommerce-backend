@@ -3,7 +3,7 @@ package com.ecommerce.levelup.product.controller;
 import com.ecommerce.levelup.product.dto.CategoryDTO;
 import com.ecommerce.levelup.product.service.CategoryService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,33 +14,15 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/categories")
-@CrossOrigin(origins = "*", maxAge = 3600)
+@RequestMapping("/categorias")
+@RequiredArgsConstructor
 public class CategoryController {
 
-    @Autowired
-    private CategoryService categoryService;
+    private final CategoryService categoryService;
 
     /**
-     * Crear categoría (solo ADMIN)
-     * POST /api/categories
-     */
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
-        try {
-            CategoryDTO created = categoryService.createCategory(categoryDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Obtener todas las categorías (público)
-     * GET /api/categories
+     * Obtener todas las categorías
+     * GET /api/categorias
      */
     @GetMapping
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
@@ -48,48 +30,53 @@ public class CategoryController {
     }
 
     /**
-     * Obtener categorías activas (público)
-     * GET /api/categories/active
+     * Obtener categoría por ID
+     * GET /api/categorias/{id}
      */
-    @GetMapping("/active")
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryById(id));
+    }
+
+    /**
+     * Obtener categorías activas
+     * GET /api/categorias/activas
+     */
+    @GetMapping("/activas")
     public ResponseEntity<List<CategoryDTO>> getActiveCategories() {
         return ResponseEntity.ok(categoryService.getActiveCategories());
     }
 
     /**
-     * Obtener categoría por ID (público)
-     * GET /api/categories/{id}
+     * Crear nueva categoría (Solo ADMIN)
+     * POST /api/categorias
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getCategoryById(@PathVariable Long id) {
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
         try {
-            return ResponseEntity.ok(categoryService.getCategoryById(id));
-        } catch (Exception e) {
+            CategoryDTO created = categoryService.createCategory(categoryDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 
     /**
-     * Buscar categorías (público)
-     * GET /api/categories/search?keyword=...
-     */
-    @GetMapping("/search")
-    public ResponseEntity<List<CategoryDTO>> searchCategories(@RequestParam String keyword) {
-        return ResponseEntity.ok(categoryService.searchCategories(keyword));
-    }
-
-    /**
-     * Actualizar categoría (solo ADMIN)
-     * PUT /api/categories/{id}
+     * Actualizar categoría (Solo ADMIN)
+     * PUT /api/categorias/{id}
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody CategoryDTO categoryDTO) {
+    public ResponseEntity<?> updateCategory(
+            @PathVariable Long id,
+            @Valid @RequestBody CategoryDTO categoryDTO) {
         try {
-            return ResponseEntity.ok(categoryService.updateCategory(id, categoryDTO));
-        } catch (Exception e) {
+            CategoryDTO updated = categoryService.updateCategory(id, categoryDTO);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -97,24 +84,8 @@ public class CategoryController {
     }
 
     /**
-     * Activar/Desactivar categoría (solo ADMIN)
-     * PUT /api/categories/{id}/toggle-status
-     */
-    @PutMapping("/{id}/toggle-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> toggleCategoryStatus(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(categoryService.toggleCategoryStatus(id));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Eliminar categoría (solo ADMIN)
-     * DELETE /api/categories/{id}
+     * Eliminar categoría (Solo ADMIN)
+     * DELETE /api/categorias/{id}
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -122,9 +93,9 @@ public class CategoryController {
         try {
             categoryService.deleteCategory(id);
             Map<String, String> response = new HashMap<>();
-            response.put("message", "Category deleted successfully");
+            response.put("mensaje", "Categoría eliminada exitosamente");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);

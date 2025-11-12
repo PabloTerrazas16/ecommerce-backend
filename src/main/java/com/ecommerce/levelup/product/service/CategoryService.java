@@ -3,19 +3,19 @@ package com.ecommerce.levelup.product.service;
 import com.ecommerce.levelup.product.dto.CategoryDTO;
 import com.ecommerce.levelup.product.model.Category;
 import com.ecommerce.levelup.product.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@RequiredArgsConstructor
 public class CategoryService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
 
     /**
      * Crear nueva categoría
@@ -31,6 +31,8 @@ public class CategoryService {
         category.setDescription(categoryDTO.getDescription());
         category.setImageUrl(categoryDTO.getImageUrl());
         category.setActive(categoryDTO.getActive() != null ? categoryDTO.getActive() : true);
+        category.setCreatedAt(LocalDateTime.now());
+        category.setUpdatedAt(LocalDateTime.now());
 
         Category savedCategory = categoryRepository.save(category);
         return convertToDTO(savedCategory);
@@ -46,15 +48,6 @@ public class CategoryService {
     }
 
     /**
-     * Obtener categorías activas
-     */
-    public List<CategoryDTO> getActiveCategories() {
-        return categoryRepository.findByActiveTrue().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Obtener categoría por ID
      */
     public CategoryDTO getCategoryById(Long id) {
@@ -64,12 +57,12 @@ public class CategoryService {
     }
 
     /**
-     * Obtener categoría por nombre
+     * Obtener categorías activas
      */
-    public CategoryDTO getCategoryByName(String name) {
-        Category category = categoryRepository.findByName(name)
-                .orElseThrow(() -> new RuntimeException("Category not found with name: " + name));
-        return convertToDTO(category);
+    public List<CategoryDTO> getActiveCategories() {
+        return categoryRepository.findByActiveTrue().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -107,6 +100,7 @@ public class CategoryService {
         if (categoryDTO.getActive() != null) {
             category.setActive(categoryDTO.getActive());
         }
+        category.setUpdatedAt(LocalDateTime.now());
 
         Category updatedCategory = categoryRepository.save(category);
         return convertToDTO(updatedCategory);
@@ -136,7 +130,7 @@ public class CategoryService {
             throw new RuntimeException("Cannot delete category with associated products");
         }
 
-        categoryRepository.deleteById(id);
+        categoryRepository.delete(category);
     }
 
     /**
@@ -149,7 +143,6 @@ public class CategoryService {
         dto.setDescription(category.getDescription());
         dto.setImageUrl(category.getImageUrl());
         dto.setActive(category.getActive());
-        dto.setProductCount(category.getProducts().size());
         dto.setCreatedAt(category.getCreatedAt());
         dto.setUpdatedAt(category.getUpdatedAt());
         return dto;

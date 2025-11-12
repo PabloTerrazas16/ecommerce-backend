@@ -1,11 +1,9 @@
 package com.ecommerce.levelup.product.controller;
 
 import com.ecommerce.levelup.product.dto.ProductDTO;
-import com.ecommerce.levelup.product.dto.ProductQueryDTO;
 import com.ecommerce.levelup.product.service.ProductService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,33 +14,15 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/products")
-@CrossOrigin(origins = "*", maxAge = 3600)
+@RequestMapping("/productos")
+@RequiredArgsConstructor
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
 
     /**
-     * Crear producto (solo ADMIN)
-     * POST /api/products
-     */
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> createProduct(@Valid @RequestBody ProductDTO productDTO) {
-        try {
-            ProductDTO created = productService.createProduct(productDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Obtener todos los productos (público)
-     * GET /api/products
+     * Obtener todos los productos
+     * GET /api/productos
      */
     @GetMapping
     public ResponseEntity<List<ProductDTO>> getAllProducts() {
@@ -50,97 +30,71 @@ public class ProductController {
     }
 
     /**
-     * Obtener productos activos (público)
-     * GET /api/products/active
+     * Obtener producto por ID
+     * GET /api/productos/{id}
      */
-    @GetMapping("/active")
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    /**
+     * Obtener productos por categoría
+     * GET /api/productos/categoria/{categoriaId}
+     */
+    @GetMapping("/categoria/{categoriaId}")
+    public ResponseEntity<List<ProductDTO>> getProductsByCategory(@PathVariable Long categoriaId) {
+        return ResponseEntity.ok(productService.getProductsByCategory(categoriaId));
+    }
+
+    /**
+     * Buscar productos
+     * GET /api/productos/buscar?consulta=texto
+     */
+    @GetMapping("/buscar")
+    public ResponseEntity<List<ProductDTO>> searchProducts(@RequestParam String consulta) {
+        return ResponseEntity.ok(productService.searchProducts(consulta));
+    }
+
+    /**
+     * Obtener productos activos
+     * GET /api/productos/activos
+     */
+    @GetMapping("/activos")
     public ResponseEntity<List<ProductDTO>> getActiveProducts() {
         return ResponseEntity.ok(productService.getActiveProducts());
     }
 
     /**
-     * Obtener productos con paginación (público)
-     * GET /api/products/page?page=0&size=10&sortBy=id&sortDirection=ASC
+     * Crear nuevo producto (Solo ADMIN)
+     * POST /api/productos
      */
-    @GetMapping("/page")
-    public ResponseEntity<Page<ProductDTO>> getProductsPage(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "ASC") String sortDirection) {
-        return ResponseEntity.ok(productService.getProductsPage(page, size, sortBy, sortDirection));
-    }
-
-    /**
-     * Obtener producto por ID (público)
-     * GET /api/products/{id}
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getProductById(@PathVariable Long id) {
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createProduct(@Valid @RequestBody ProductDTO productDTO) {
         try {
-            return ResponseEntity.ok(productService.getProductById(id));
-        } catch (Exception e) {
+            ProductDTO created = productService.createProduct(productDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 
     /**
-     * Obtener productos por categoría (público)
-     * GET /api/products/category/{categoryId}
-     */
-    @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<ProductDTO>> getProductsByCategory(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
-    }
-
-    /**
-     * Obtener productos por marca (público)
-     * GET /api/products/brand/{brand}
-     */
-    @GetMapping("/brand/{brand}")
-    public ResponseEntity<List<ProductDTO>> getProductsByBrand(@PathVariable String brand) {
-        return ResponseEntity.ok(productService.getProductsByBrand(brand));
-    }
-
-    /**
-     * Buscar productos (público)
-     * GET /api/products/search?keyword=...
-     */
-    @GetMapping("/search")
-    public ResponseEntity<List<ProductDTO>> searchProducts(@RequestParam String keyword) {
-        return ResponseEntity.ok(productService.searchProducts(keyword));
-    }
-
-    /**
-     * Filtrar productos con múltiples criterios (público)
-     * POST /api/products/filter
-     */
-    @PostMapping("/filter")
-    public ResponseEntity<List<ProductDTO>> filterProducts(@RequestBody ProductQueryDTO queryDTO) {
-        return ResponseEntity.ok(productService.filterProducts(queryDTO));
-    }
-
-    /**
-     * Obtener productos disponibles (público)
-     * GET /api/products/available
-     */
-    @GetMapping("/available")
-    public ResponseEntity<List<ProductDTO>> getAvailableProducts() {
-        return ResponseEntity.ok(productService.getAvailableProducts());
-    }
-
-    /**
-     * Actualizar producto (solo ADMIN)
-     * PUT /api/products/{id}
+     * Actualizar producto (Solo ADMIN)
+     * PUT /api/productos/{id}
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody ProductDTO productDTO) {
+    public ResponseEntity<?> updateProduct(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductDTO productDTO) {
         try {
-            return ResponseEntity.ok(productService.updateProduct(id, productDTO));
-        } catch (Exception e) {
+            ProductDTO updated = productService.updateProduct(id, productDTO);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -148,16 +102,21 @@ public class ProductController {
     }
 
     /**
-     * Actualizar stock (solo ADMIN)
-     * PUT /api/products/{id}/stock
+     * Actualizar stock (Solo ADMIN)
+     * PATCH /api/productos/{id}/stock?cantidad=50
      */
-    @PutMapping("/{id}/stock")
+    @PatchMapping("/{id}/stock")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody Map<String, Integer> request) {
+    public ResponseEntity<?> updateStock(
+            @PathVariable Long id,
+            @RequestParam Integer cantidad) {
         try {
-            Integer quantity = request.get("quantity");
-            return ResponseEntity.ok(productService.updateStock(id, quantity));
-        } catch (Exception e) {
+            productService.updateStock(id, cantidad);
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", "Stock actualizado exitosamente");
+            response.put("nuevo_stock", cantidad.toString());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -165,24 +124,8 @@ public class ProductController {
     }
 
     /**
-     * Activar/Desactivar producto (solo ADMIN)
-     * PUT /api/products/{id}/toggle-status
-     */
-    @PutMapping("/{id}/toggle-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> toggleProductStatus(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(productService.toggleProductStatus(id));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Eliminar producto (solo ADMIN)
-     * DELETE /api/products/{id}
+     * Eliminar producto (Solo ADMIN)
+     * DELETE /api/productos/{id}
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -190,9 +133,9 @@ public class ProductController {
         try {
             productService.deleteProduct(id);
             Map<String, String> response = new HashMap<>();
-            response.put("message", "Product deleted successfully");
+            response.put("mensaje", "Producto eliminado exitosamente");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);

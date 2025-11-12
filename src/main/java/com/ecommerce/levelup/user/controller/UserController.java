@@ -2,8 +2,7 @@ package com.ecommerce.levelup.user.controller;
 
 import com.ecommerce.levelup.user.dto.UserDTO;
 import com.ecommerce.levelup.user.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,16 +12,15 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/users")
-@CrossOrigin(origins = "*", maxAge = 3600)
+@RequestMapping("/usuarios")
+@RequiredArgsConstructor
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     /**
-     * Obtener todos los usuarios (solo ADMIN)
-     * GET /api/users
+     * Obtener todos los usuarios (Solo ADMIN)
+     * GET /api/usuarios
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -31,148 +29,39 @@ public class UserController {
     }
 
     /**
-     * Obtener usuario por ID
-     * GET /api/users/{id}
+     * Obtener usuario por ID (Solo ADMIN)
+     * GET /api/usuarios/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @userService.isCurrentUser(#id)")
-    public ResponseEntity<?> getUserById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(userService.getUserById(id));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
-    }
-
-    /**
-     * Obtener usuario por username
-     * GET /api/users/username/{username}
-     */
-    @GetMapping("/username/{username}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getUserByUsername(@PathVariable String username) {
-        try {
-            return ResponseEntity.ok(userService.getUserByUsername(username));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
     /**
-     * Obtener usuarios activos
-     * GET /api/users/active
+     * Activar/Desactivar usuario (Solo ADMIN)
+     * PATCH /api/usuarios/{id}/estado?activo=true
      */
-    @GetMapping("/active")
+    @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserDTO>> getActiveUsers() {
-        return ResponseEntity.ok(userService.getActiveUsers());
-    }
-
-    /**
-     * Buscar usuarios
-     * GET /api/users/search?keyword=...
-     */
-    @GetMapping("/search")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserDTO>> searchUsers(@RequestParam String keyword) {
-        return ResponseEntity.ok(userService.searchUsers(keyword));
-    }
-
-    /**
-     * Actualizar usuario
-     * PUT /api/users/{id}
-     */
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @userService.isCurrentUser(#id)")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
-        try {
-            return ResponseEntity.ok(userService.updateUser(id, userDTO));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Cambiar contraseña
-     * PUT /api/users/{id}/password
-     */
-    @PutMapping("/{id}/password")
-    @PreAuthorize("hasRole('ADMIN') or @userService.isCurrentUser(#id)")
-    public ResponseEntity<?> changePassword(
+    public ResponseEntity<?> toggleUserStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> passwords) {
+            @RequestParam Boolean activo) {
         try {
-            String oldPassword = passwords.get("oldPassword");
-            String newPassword = passwords.get("newPassword");
-            userService.changePassword(id, oldPassword, newPassword);
-
+            userService.toggleUserStatus(id, activo);
             Map<String, String> response = new HashMap<>();
-            response.put("message", "Password changed successfully");
+            response.put("mensaje", activo ? "Usuario activado" : "Usuario desactivado");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.badRequest().body(error);
         }
     }
 
     /**
-     * Asignar rol a usuario (solo ADMIN)
-     * POST /api/users/{id}/roles/{roleName}
-     */
-    @PostMapping("/{id}/roles/{roleName}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> assignRole(@PathVariable Long id, @PathVariable String roleName) {
-        try {
-            return ResponseEntity.ok(userService.assignRole(id, roleName));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Remover rol de usuario (solo ADMIN)
-     * DELETE /api/users/{id}/roles/{roleName}
-     */
-    @DeleteMapping("/{id}/roles/{roleName}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> removeRole(@PathVariable Long id, @PathVariable String roleName) {
-        try {
-            return ResponseEntity.ok(userService.removeRole(id, roleName));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Habilitar/Deshabilitar usuario (solo ADMIN)
-     * PUT /api/users/{id}/toggle-status
-     */
-    @PutMapping("/{id}/toggle-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> toggleUserStatus(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(userService.toggleUserStatus(id));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Eliminar usuario (solo ADMIN)
-     * DELETE /api/users/{id}
+     * Eliminar usuario (Solo ADMIN)
+     * DELETE /api/usuarios/{id}
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -180,12 +69,12 @@ public class UserController {
         try {
             userService.deleteUser(id);
             Map<String, String> response = new HashMap<>();
-            response.put("message", "User deleted successfully");
+            response.put("mensaje", "Usuario eliminado exitosamente");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.badRequest().body(error);
         }
     }
 }

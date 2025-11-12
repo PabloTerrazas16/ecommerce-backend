@@ -1,9 +1,10 @@
 package com.ecommerce.levelup.payment.controller;
 
-import com.ecommerce.levelup.payment.dto.*;
+import com.ecommerce.levelup.payment.dto.PaymentDTO;
+import com.ecommerce.levelup.payment.dto.ProcessPaymentRequest;
 import com.ecommerce.levelup.payment.service.PaymentService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,24 +15,23 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/payments")
-@CrossOrigin(origins = "*", maxAge = 3600)
+@RequestMapping("/pagos")
+@RequiredArgsConstructor
 public class PaymentController {
 
-    @Autowired
-    private PaymentService paymentService;
+    private final PaymentService paymentService;
 
     /**
-     * Generar token de pago (requiere autenticación)
-     * POST /api/payments/token
+     * Iniciar pago
+     * POST /api/pagos
      */
-    @PostMapping("/token")
+    @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> generatePaymentToken(@Valid @RequestBody PaymentTokenRequest request) {
+    public ResponseEntity<?> initiatePayment(@Valid @RequestBody PaymentDTO paymentDTO) {
         try {
-            PaymentTokenResponse response = paymentService.generatePaymentToken(request);
+            Map<String, Object> response = paymentService.initiatePayment(paymentDTO);
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -39,61 +39,47 @@ public class PaymentController {
     }
 
     /**
-     * Procesar pago (requiere token de pago válido)
-     * POST /api/payments/process
+     * Confirmar pago
+     * POST /api/pagos/{id}/confirmar
      */
-    @PostMapping("/process")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> processPayment(@Valid @RequestBody ProcessPaymentRequest request) {
+    @PostMapping("/{id}/confirmar")
+    public ResponseEntity<?> confirmPayment(
+            @PathVariable Long id,
+            @Valid @RequestBody ProcessPaymentRequest request,
+            @RequestHeader("Authorization") String paymentToken) {
         try {
-            PaymentDTO payment = paymentService.processPayment(request);
-            return ResponseEntity.ok(payment);
-        } catch (Exception e) {
+            Map<String, Object> response = paymentService.confirmPayment(id, request, paymentToken);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
+    }
+
+    /**
+     * Obtener mis pagos
+     * GET /api/pagos/mis-pagos
+     */
+    @GetMapping("/mis-pagos")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<PaymentDTO>> getMyPayments() {
+        return ResponseEntity.ok(paymentService.getUserPayments());
     }
 
     /**
      * Obtener pago por ID
-     * GET /api/payments/{id}
+     * GET /api/pagos/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @paymentService.isPaymentOwner(#id, authentication.principal.id)")
-    public ResponseEntity<?> getPaymentById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(paymentService.getPaymentById(id));
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PaymentDTO> getPaymentById(@PathVariable Long id) {
+        return ResponseEntity.ok(paymentService.getPaymentById(id));
     }
 
     /**
-     * Obtener pagos de un usuario
-     * GET /api/payments/user/{userId}
-     */
-    @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    public ResponseEntity<List<PaymentDTO>> getUserPayments(@PathVariable Long userId) {
-        return ResponseEntity.ok(paymentService.getUserPayments(userId));
-    }
-
-    /**
-     * Obtener historial de pagos de un usuario
-     * GET /api/payments/user/{userId}/history
-     */
-    @GetMapping("/user/{userId}/history")
-    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
-    public ResponseEntity<List<PaymentDTO>> getUserPaymentHistory(@PathVariable Long userId) {
-        return ResponseEntity.ok(paymentService.getUserPaymentHistory(userId));
-    }
-
-    /**
-     * Obtener todos los pagos (solo ADMIN)
-     * GET /api/payments
+     * Obtener todos los pagos (Solo ADMIN)
+     * GET /api/pagos
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -102,43 +88,18 @@ public class PaymentController {
     }
 
     /**
-     * Obtener pagos por estado (solo ADMIN)
-     * GET /api/payments/status/{status}
+     * Reembolsar pago (Solo ADMIN)
+     * POST /api/pagos/{id}/reembolsar
      */
-    @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<PaymentDTO>> getPaymentsByStatus(@PathVariable String status) {
-        return ResponseEntity.ok(paymentService.getPaymentsByStatus(status));
-    }
-
-    /**
-     * Reembolsar pago (solo ADMIN)
-     * PUT /api/payments/{id}/refund
-     */
-    @PutMapping("/{id}/refund")
+    @PostMapping("/{id}/reembolsar")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> refundPayment(@PathVariable Long id) {
         try {
-            PaymentDTO refunded = paymentService.refundPayment(id);
-            return ResponseEntity.ok(refunded);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
-    }
-
-    /**
-     * Cancelar pago
-     * PUT /api/payments/{id}/cancel
-     */
-    @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('ADMIN') or @paymentService.isPaymentOwner(#id, authentication.principal.id)")
-    public ResponseEntity<?> cancelPayment(@PathVariable Long id) {
-        try {
-            PaymentDTO cancelled = paymentService.cancelPayment(id);
-            return ResponseEntity.ok(cancelled);
-        } catch (Exception e) {
+            paymentService.refundPayment(id);
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", "Pago reembolsado exitosamente");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
