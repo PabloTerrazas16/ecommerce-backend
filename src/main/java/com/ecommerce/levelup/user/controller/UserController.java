@@ -39,6 +39,25 @@ public class UserController {
     }
 
     /**
+     * Actualizar usuario (Solo ADMIN o el mismo usuario)
+     * PUT /api/usuarios/{id}
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#id)")
+    public ResponseEntity<?> updateUser(
+            @PathVariable Long id,
+            @RequestBody UserDTO userDTO) {
+        try {
+            UserDTO updated = userService.updateUser(id, userDTO);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
      * Activar/Desactivar usuario (Solo ADMIN)
      * PATCH /api/usuarios/{id}/estado?activo=true
      */

@@ -17,6 +17,8 @@ public class CategoryDTO {
     @NotBlank(message = "Category name is required")
     private String name;
 
+    private String code; // Código corto para SKU (ej: JM, AC, CO)
+
     private String description;
 
     private String imageUrl;

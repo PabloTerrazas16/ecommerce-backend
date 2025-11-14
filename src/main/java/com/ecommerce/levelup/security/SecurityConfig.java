@@ -43,6 +43,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/products/public/**").permitAll()
                         .requestMatchers("/api/categories/public/**").permitAll()
 
+                        // Rutas de productos (GET público, POST/PUT/DELETE requieren autenticación)
+                        .requestMatchers("/productos").permitAll() // GET público
+                        .requestMatchers("/productos/**").permitAll() // GET por ID público
+                        .requestMatchers("/categorias").permitAll() // GET público
+                        .requestMatchers("/categorias/**").permitAll() // GET por ID público
+                        
                         // Rutas de productos (requieren token público o de usuario)
                         .requestMatchers("/api/products/**").permitAll()
                         .requestMatchers("/api/categories/**").permitAll()
@@ -87,4 +93,6 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
+
+
 }

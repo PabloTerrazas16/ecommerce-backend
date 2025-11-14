@@ -63,9 +63,15 @@ public class ProductService {
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productDTO.getCategoryId()));
 
-        // Validar SKU único
-        if (productDTO.getSku() != null && productRepository.existsBySku(productDTO.getSku())) {
-            throw new RuntimeException("Ya existe un producto con el SKU: " + productDTO.getSku());
+        // Generar código automáticamente si no se proporciona
+        String sku = productDTO.getCode();
+        if (sku == null || sku.isEmpty()) {
+            sku = generateSku(category);
+        }
+        
+        // Validar código único
+        if (productRepository.existsByCode(sku)) {
+            throw new RuntimeException("Ya existe un producto con el código: " + sku);
         }
 
         // Validar precio
@@ -79,21 +85,53 @@ public class ProductService {
         }
 
         Product product = new Product();
+        product.setCode(sku);
         product.setName(productDTO.getName());
-        product.setDescription(productDTO.getDescription());
         product.setPrice(productDTO.getPrice());
-        product.setStock(productDTO.getStock());
         product.setCategory(category);
-        product.setBrand(productDTO.getBrand());
-        product.setSku(productDTO.getSku());
-        product.setImageUrl(productDTO.getImageUrl());
-        product.setWeight(productDTO.getWeight());
+        product.setImage(productDTO.getImage());
+        product.setDescription(productDTO.getDescription());
+        product.setStock(productDTO.getStock());
+        product.setFeatured(productDTO.getFeatured() != null ? productDTO.getFeatured() : false);
         product.setActive(productDTO.getActive() != null ? productDTO.getActive() : true);
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
 
         Product saved = productRepository.save(product);
         return convertToDTO(saved);
+    }
+    
+    /**
+     * Generar código/SKU automáticamente basado en la categoría
+     * Formato: CODIGO_CATEGORIA + NUMERO_SECUENCIAL (ej: JM001, AC002, CO001)
+     */
+    private String generateSku(Category category) {
+        String prefix = category.getCode();
+        if (prefix == null || prefix.isEmpty()) {
+            prefix = "PROD";
+        }
+        
+        // Buscar el último código con este prefijo
+        List<Product> productsInCategory = productRepository.findByCategory(category);
+        int maxNumber = 0;
+        
+        for (Product p : productsInCategory) {
+            if (p.getCode() != null && p.getCode().startsWith(prefix)) {
+                try {
+                    String numberPart = p.getCode().substring(prefix.length());
+                    int number = Integer.parseInt(numberPart);
+                    if (number > maxNumber) {
+                        maxNumber = number;
+                    }
+                } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    // Ignorar códigos con formato inválido
+                }
+            }
+        }
+        
+        // Generar siguiente número
+        int nextNumber = maxNumber + 1;
+        return String.format("%s%03d", prefix, nextNumber);
     }
 
     @Transactional
@@ -105,11 +143,11 @@ public class ProductService {
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productDTO.getCategoryId()));
 
-        // Validar SKU único (excepto para el mismo producto)
-        if (productDTO.getSku() != null && 
-            !productDTO.getSku().equals(product.getSku()) && 
-            productRepository.existsBySku(productDTO.getSku())) {
-            throw new RuntimeException("Ya existe un producto con el SKU: " + productDTO.getSku());
+        // Validar código único (excepto para el mismo producto)
+        if (productDTO.getCode() != null && 
+            !productDTO.getCode().equals(product.getCode()) && 
+            productRepository.existsByCode(productDTO.getCode())) {
+            throw new RuntimeException("Ya existe un producto con el código: " + productDTO.getCode());
         }
 
         // Validar precio
@@ -122,15 +160,14 @@ public class ProductService {
             throw new RuntimeException("El stock no puede ser negativo");
         }
 
+        product.setCode(productDTO.getCode());
         product.setName(productDTO.getName());
-        product.setDescription(productDTO.getDescription());
         product.setPrice(productDTO.getPrice());
-        product.setStock(productDTO.getStock());
         product.setCategory(category);
-        product.setBrand(productDTO.getBrand());
-        product.setSku(productDTO.getSku());
-        product.setImageUrl(productDTO.getImageUrl());
-        product.setWeight(productDTO.getWeight());
+        product.setImage(productDTO.getImage());
+        product.setDescription(productDTO.getDescription());
+        product.setStock(productDTO.getStock());
+        product.setFeatured(productDTO.getFeatured());
         product.setActive(productDTO.getActive());
         product.setUpdatedAt(LocalDateTime.now());
 
@@ -163,16 +200,15 @@ public class ProductService {
     private ProductDTO convertToDTO(Product product) {
         ProductDTO dto = new ProductDTO();
         dto.setId(product.getId());
+        dto.setCode(product.getCode());
         dto.setName(product.getName());
-        dto.setDescription(product.getDescription());
         dto.setPrice(product.getPrice());
-        dto.setStock(product.getStock());
         dto.setCategoryId(product.getCategory().getId());
-        dto.setCategoryName(product.getCategory().getName());
-        dto.setBrand(product.getBrand());
-        dto.setSku(product.getSku());
-        dto.setImageUrl(product.getImageUrl());
-        dto.setWeight(product.getWeight());
+        dto.setCategory(product.getCategory().getName());
+        dto.setImage(product.getImage());
+        dto.setDescription(product.getDescription());
+        dto.setStock(product.getStock());
+        dto.setFeatured(product.getFeatured());
         dto.setActive(product.getActive());
         dto.setCreatedAt(product.getCreatedAt());
         dto.setUpdatedAt(product.getUpdatedAt());

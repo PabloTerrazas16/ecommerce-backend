@@ -28,6 +28,9 @@ public class Category {
     @Column(unique = true, nullable = false, length = 100)
     private String name;
 
+    @Column(unique = true, length = 10)
+    private String code; // Código corto para SKU (ej: JM, AC, CO)
+
     @Column(length = 500)
     private String description;
 

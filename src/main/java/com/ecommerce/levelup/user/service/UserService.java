@@ -76,6 +76,49 @@ public class UserService {
     }
 
     /**
+     * Actualizar usuario
+     */
+    @Transactional
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
+
+        // Validar email único (si cambió)
+        if (userDTO.getEmail() != null && !userDTO.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(userDTO.getEmail())) {
+                throw new RuntimeException("El email ya está registrado");
+            }
+            user.setEmail(userDTO.getEmail());
+        }
+
+        // Actualizar campos básicos (solo si vienen en el DTO)
+        if (userDTO.getFirstName() != null) {
+            user.setFirstName(userDTO.getFirstName());
+        }
+        if (userDTO.getLastName() != null) {
+            user.setLastName(userDTO.getLastName());
+        }
+
+        if (userDTO.getPhone() != null) {
+            user.setPhone(userDTO.getPhone());
+        }
+        if (userDTO.getAddress() != null) {
+            user.setAddress(userDTO.getAddress());
+        }
+        if (userDTO.getRegion() != null) {
+            user.setRegion(userDTO.getRegion());
+        }
+        // FALTABA: setear city si viene en el DTO
+        if (userDTO.getCity() != null) {
+            user.setCity(userDTO.getCity());
+        }
+        user.setUpdatedAt(LocalDateTime.now());
+        User updated = userRepository.save(user);
+
+        return convertToDTO(updated);
+    }
+
+    /**
      * Convertir User a UserDTO
      */
     private UserDTO convertToDTO(User user) {
@@ -85,8 +128,11 @@ public class UserService {
         dto.setEmail(user.getEmail());
         dto.setFirstName(user.getFirstName());
         dto.setLastName(user.getLastName());
+        dto.setFullName(user.getFullName());
         dto.setPhone(user.getPhone());
         dto.setAddress(user.getAddress());
+        dto.setRegion(user.getRegion());
+        dto.setCity(user.getCity());
         dto.setEnabled(user.getEnabled());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());

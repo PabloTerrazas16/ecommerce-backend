@@ -32,4 +32,5 @@ public class RegisterRequest {
 
     private String phone;
     private String address;
+    private String region;
 }

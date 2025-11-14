@@ -1,12 +1,15 @@
 package com.ecommerce.levelup.user.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -19,6 +22,8 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(exclude = "roles")
+@ToString(exclude = "roles")
 public class User {
 
     @Id
@@ -54,6 +59,13 @@ public class User {
     @Column(length = 200)
     private String address;
 
+    @Column(length = 100)
+    private String region;
+
+    @Column(length = 100)
+    private String city;
+
+
     @Column(nullable = false)
     private Boolean enabled = true;
 
@@ -63,6 +75,7 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @JsonManagedReference
     private Set<Role> roles = new HashSet<>();
 
     @CreationTimestamp

@@ -20,6 +20,8 @@ public class UserDTO {
     private String fullName;
     private String phone;
     private String address;
+    private String region;
+    private String city;
     private Boolean enabled;
     private Set<String> roles;
     private LocalDateTime createdAt;

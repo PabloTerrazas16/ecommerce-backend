@@ -25,43 +25,39 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Nombre del producto")
+    @Column(unique = true, length = 50)
+    private String code; // SKU generado automáticamente (ej: JM001, AC002)
+
+    @NotBlank(message = "Nombre del producto requerido")
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(length = 1000)
-    private String description;
-
-    @NotNull(message = "Precio")
+    @NotNull(message = "Precio requerido")
     @DecimalMin(value = "0.0", inclusive = false, message = "El precio debe ser mayor a 0")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @NotNull(message = "Stock is required")
-    @Min(value = 0, message = "Stock cannot be negative")
-    @Column(nullable = false)
-    private Integer stock;
-
-    @Column(length = 500)
-    private String imageUrl;
-
-    @Column(nullable = false)
-    private Boolean active = true;
-
-    @NotNull(message = "Categoria")
+    @NotNull(message = "Categoría requerida")
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    @Column(length = 100)
-    private String brand;
+    @Column(length = 500)
+    private String image; // URL de la imagen
 
-    @Column(length = 50)
-    private String sku;
+    @Column(length = 1000)
+    private String description;
 
-    @DecimalMin(value = "0.0", message = "El peso debe ser positivo")
-    @Column(precision = 8, scale = 2)
-    private BigDecimal weight;
+    @NotNull(message = "Stock requerido")
+    @Min(value = 0, message = "Stock no puede ser negativo")
+    @Column(nullable = false)
+    private Integer stock;
+
+    @Column(nullable = false)
+    private Boolean featured = false; // Producto destacado
+
+    @Column(nullable = false)
+    private Boolean active = true;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

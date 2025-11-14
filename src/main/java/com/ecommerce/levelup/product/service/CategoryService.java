@@ -28,6 +28,14 @@ public class CategoryService {
 
         Category category = new Category();
         category.setName(categoryDTO.getName());
+        
+        // Generar código automáticamente si no se proporciona
+        if (categoryDTO.getCode() == null || categoryDTO.getCode().isEmpty()) {
+            category.setCode(generateCategoryCode(categoryDTO.getName()));
+        } else {
+            category.setCode(categoryDTO.getCode().toUpperCase());
+        }
+        
         category.setDescription(categoryDTO.getDescription());
         category.setImageUrl(categoryDTO.getImageUrl());
         category.setActive(categoryDTO.getActive() != null ? categoryDTO.getActive() : true);
@@ -36,6 +44,37 @@ public class CategoryService {
 
         Category savedCategory = categoryRepository.save(category);
         return convertToDTO(savedCategory);
+    }
+    
+    /**
+     * Generar código de categoría basado en el nombre
+     * Ej: "Juegos de Mesa" -> "JM", "Accesorios" -> "AC"
+     */
+    private String generateCategoryCode(String categoryName) {
+        // Remover artículos y palabras comunes
+        String cleaned = categoryName.toUpperCase()
+                .replace("DE ", "")
+                .replace("LA ", "")
+                .replace("EL ", "")
+                .replace("LOS ", "")
+                .replace("LAS ", "");
+        
+        String[] words = cleaned.split("\\s+");
+        
+        // Si solo hay una palabra, tomar las primeras 2 letras
+        if (words.length == 1) {
+            return words[0].substring(0, Math.min(2, words[0].length()));
+        }
+        
+        // Si hay múltiples palabras, tomar la primera letra de cada palabra
+        StringBuilder code = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                code.append(word.charAt(0));
+            }
+        }
+        
+        return code.toString();
     }
 
     /**
@@ -140,6 +179,7 @@ public class CategoryService {
         CategoryDTO dto = new CategoryDTO();
         dto.setId(category.getId());
         dto.setName(category.getName());
+        dto.setCode(category.getCode());
         dto.setDescription(category.getDescription());
         dto.setImageUrl(category.getImageUrl());
         dto.setActive(category.getActive());

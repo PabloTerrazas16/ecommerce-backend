@@ -72,11 +72,14 @@ public class DataInitializer implements CommandLineRunner {
             admin.setCreatedAt(LocalDateTime.now());
             admin.setUpdatedAt(LocalDateTime.now());
 
+            // Inicializar el Set de roles antes de agregar
             Set<Role> adminRoles = new HashSet<>();
             adminRoles.add(adminRole);
             admin.setRoles(adminRoles);
-
-            userRepository.save(admin);
+            
+            User savedAdmin = userRepository.save(admin);
+            log.info("Admin user created - ID: {}, Username: {}", savedAdmin.getId(), savedAdmin.getUsername());
+            log.info("Admin roles count after save: {}", savedAdmin.getRoles().size());
 
             // Regular user
             Role userRole = roleRepository.findByName("ROLE_USER")
@@ -92,11 +95,14 @@ public class DataInitializer implements CommandLineRunner {
             regularUser.setCreatedAt(LocalDateTime.now());
             regularUser.setUpdatedAt(LocalDateTime.now());
 
+            // Inicializar el Set de roles antes de agregar
             Set<Role> userRoles = new HashSet<>();
             userRoles.add(userRole);
             regularUser.setRoles(userRoles);
-
-            userRepository.save(regularUser);
+            
+            User savedUser = userRepository.save(regularUser);
+            log.info("Regular user created - ID: {}, Username: {}", savedUser.getId(), savedUser.getUsername());
+            log.info("User roles count after save: {}", savedUser.getRoles().size());
 
             log.info("Users initialized successfully!");
             log.info("Admin credentials - Username: admin, Password: admin123");

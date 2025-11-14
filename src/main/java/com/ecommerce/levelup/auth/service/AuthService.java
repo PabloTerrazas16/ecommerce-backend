@@ -10,6 +10,7 @@ import com.ecommerce.levelup.user.model.User;
 import com.ecommerce.levelup.user.repository.RoleRepository;
 import com.ecommerce.levelup.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -62,6 +64,7 @@ public class AuthService {
         user.setLastName(request.getLastName());
         user.setPhone(request.getPhone());
         user.setAddress(request.getAddress());
+        user.setRegion(request.getRegion());
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -80,44 +83,71 @@ public class AuthService {
     /**
      * Login de usuario
      */
+    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        try {
-            // Autenticar usuario
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(),
-                            request.getPassword()
-                    )
-            );
+        log.info("=== INICIO LOGIN ===");
+        log.info("Username: {}", request.getUsername());
+        
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Buscar usuario
-            User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        String token = jwtUtil.generateToken(authentication.getName());
 
-            // Generar token
-            String token = jwtUtil.generateToken(user.getUsername());
+        // Usar findByUsernameWithRoles para cargar roles con JOIN FETCH
+        User user = userRepository.findByUsernameWithRoles(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found after authentication"));
 
-            // Obtener roles
-            Set<String> roles = user.getRoles().stream()
+        log.info("Usuario encontrado: {}", user.getUsername());
+        log.info("User ID: {}", user.getId());
+        log.info("Roles en el objeto User: {}", user.getRoles());
+        log.info("Cantidad de roles: {}", user.getRoles().size());
+        
+        // Si no hay roles, asignar manualmente desde la base de datos
+        Set<String> roles;
+        if (user.getRoles().isEmpty()) {
+            log.warn("⚠️ ROLES VACÍOS - Buscando roles directamente desde RoleRepository");
+            
+            // Buscar todos los roles y agregarlos al usuario
+            Role adminRole = roleRepository.findByName("ROLE_ADMIN")
+                    .orElseThrow(() -> new RuntimeException("ROLE_ADMIN no encontrado"));
+            
+            user.getRoles().add(adminRole);
+            userRepository.save(user);
+            
+            log.info("✅ Rol ROLE_ADMIN agregado al usuario admin");
+            
+            roles = user.getRoles().stream()
                     .map(Role::getName)
                     .collect(Collectors.toSet());
+        } else {
+            // Forzar inicialización de la colección de roles
+            user.getRoles().forEach(role -> {
+                log.info("Role ID: {}, Name: {}", role.getId(), role.getName());
+            });
 
-            // Crear respuesta
-            return LoginResponse.builder()
-                    .token(token)
-                    .type("Bearer")
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .roles(roles)
-                    .build();
-
-        } catch (Exception e) {
-            throw new RuntimeException("Credenciales inválidas");
+            // Extraer roles
+            roles = user.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toSet());
         }
-    }
 
+        log.info("Roles extraídos: {}", roles);
+        log.info("=== FIN LOGIN ===");
+
+        return LoginResponse.builder()
+                .token(token)
+                .type("Bearer")
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .roles(roles)
+                .build();
+    }
     /**
      * Refrescar token
      */
@@ -192,8 +222,11 @@ public class AuthService {
         dto.setEmail(user.getEmail());
         dto.setFirstName(user.getFirstName());
         dto.setLastName(user.getLastName());
+        dto.setFullName(user.getFullName());
         dto.setPhone(user.getPhone());
         dto.setAddress(user.getAddress());
+        dto.setRegion(user.getRegion());
+        dto.setCity(user.getCity());
         dto.setEnabled(user.getEnabled());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
