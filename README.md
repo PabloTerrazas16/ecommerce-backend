@@ -2,20 +2,24 @@
 
 ## 📋 Descripción
 
-Backend completo de e-commerce desarrollado con **Spring Boot 3.2.0** y **Java 17**. Implementa autenticación JWT, gestión de productos, categorías, usuarios y pagos con arquitectura de capas (Controller - Service - Repository).
+Backend completo de e-commerce desarrollado con **Spring Boot 3.2.0** y **Java 17**. Implementa autenticación JWT, gestión de productos, categorías, usuarios, roles, pagos y auditoría completa con arquitectura de capas (Controller - Service - Repository).
 
 ---
 
-## Tecnologías Utilizadas
+## 🛠️ Tecnologías Utilizadas
 
 - **Java**: 17 (Eclipse Adoptium)
 - **Spring Boot**: 3.2.0
 - **Spring Security**: Autenticación y autorización con JWT
 - **Spring Data JPA**: Persistencia de datos
+- **Spring AOP**: Auditoría con Aspect Oriented Programming 🆕
 - **MySQL**: Base de datos relacional (vía Laragon)
 - **Maven**: Gestión de dependencias
 - **Lombok**: Reducción de código boilerplate
 - **JJWT**: Generación y validación de tokens JWT (v0.12.3)
+- **Jackson**: Serialización/Deserialización JSON
+- **Hibernate**: ORM para mapeo objeto-relacional
+- **Jakarta Validation**: Validaciones con anotaciones
 
 ---
 
@@ -33,7 +37,8 @@ ecommerce-backend/
 │   │   ├── dto/
 │   │   │   ├── LoginRequest.java            # DTO para login
 │   │   │   ├── LoginResponse.java           # DTO respuesta con JWT y roles
-│   │   │   └── RegisterRequest.java         # DTO para registro
+│   │   │   ├── RegisterRequest.java         # DTO para registro
+│   │   │   └── ChangePasswordRequest.java   # DTO para cambio de contraseña
 │   │   └── service/
 │   │       ├── AuthService.java             # Lógica de autenticación
 │   │       └── CustomUserDetailsService.java # Carga de usuarios para Spring Security
@@ -48,11 +53,14 @@ ecommerce-backend/
 │   │   ├── JwtFilter.java                   # Filtro para interceptar y validar JWT
 │   │   └── SecurityConfig.java              # Configuración de Spring Security
 │   │
-│   ├── user/                                # Módulo de Usuarios
+│   ├── user/                                # Módulo de Usuarios y Roles
 │   │   ├── controller/
-│   │   │   └── UserController.java          # CRUD de usuarios
+│   │   │   ├── UserController.java          # CRUD de usuarios
+│   │   │   └── RoleController.java          # CRUD de roles
 │   │   ├── dto/
-│   │   │   └── UserDTO.java                 # DTO de usuario
+│   │   │   ├── UserDTO.java                 # DTO de usuario
+│   │   │   ├── RoleDTO.java                 # DTO de rol
+│   │   │   └── CreateRoleRequest.java       # DTO para crear rol
 │   │   ├── model/
 │   │   │   ├── User.java                    # Entidad Usuario
 │   │   │   └── Role.java                    # Entidad Rol
@@ -60,7 +68,8 @@ ecommerce-backend/
 │   │   │   ├── UserRepository.java          # Acceso a datos de usuarios
 │   │   │   └── RoleRepository.java          # Acceso a datos de roles
 │   │   └── service/
-│   │       └── UserService.java             # Lógica de negocio de usuarios
+│   │       ├── UserService.java             # Lógica de negocio de usuarios
+│   │       └── RoleService.java             # Lógica de negocio de roles
 │   │
 │   ├── product/                             # Módulo de Productos
 │   │   ├── controller/
@@ -79,18 +88,27 @@ ecommerce-backend/
 │   │       ├── ProductService.java          # Lógica de productos + SKU auto
 │   │       └── CategoryService.java         # Lógica de categorías + código auto
 │   │
-│   └── payment/                             # Módulo de Pagos
-│       ├── controller/
-│       │   └── PaymentController.java       # Procesar pagos
-│       ├── dto/
-│       │   ├── PaymentDTO.java              # DTO de pago
-│       │   └── ProcessPaymentRequest.java   # DTO solicitud de pago
-│       ├── model/
-│       │   └── Payment.java                 # Entidad Pago
-│       ├── repository/
-│       │   └── PaymentRepository.java       # Acceso a datos de pagos
-│       └── service/
-│           └── PaymentService.java          # Lógica de pagos
+│   ├── payment/                             # Módulo de Pagos
+│   │   ├── controller/
+│   │   │   └── PaymentController.java       # Procesar pagos, reembolsos
+│   │   ├── dto/
+│   │   │   ├── PaymentDTO.java              # DTO de pago
+│   │   │   ├── PaymentTokenRequest.java     # DTO para generar token de pago
+│   │   │   ├── PaymentTokenResponse.java    # DTO respuesta token
+│   │   │   └── ProcessPaymentRequest.java   # DTO solicitud de pago
+│   │   ├── model/
+│   │   │   └── Payment.java                 # Entidad Pago
+│   │   ├── repository/
+│   │   │   └── PaymentRepository.java       # Acceso a datos de pagos
+│   │   └── service/
+│   │       └── PaymentService.java          # Lógica de pagos
+│   │
+│   └── audit/                               # Módulo de Auditoría
+│       ├── AuditLog.java                    # Entidad de registro de auditoría
+│       ├── AuditLogRepository.java          # Acceso a datos de auditoría
+│       ├── AuditService.java                # Servicio de auditoría
+│       ├── AuditAspect.java                 # AOP para interceptar operaciones
+│       └── AuditController.java             # Consultar logs de auditoría
 │
 └── src/main/resources/
     └── application.properties               # Configuración de la aplicación
@@ -123,11 +141,14 @@ El sistema utiliza tokens JWT para autenticar usuarios sin mantener sesiones en 
 
 #### **Endpoints de Autenticación**
 
-| Método | Endpoint                  | Descripción                   | Auth |
-| ------ | ------------------------- | ----------------------------- | ---- |
-| POST   | `/autenticacion/register` | Registrar nuevo usuario       | ❌   |
-| POST   | `/autenticacion/login`    | Iniciar sesión (devuelve JWT) | ❌   |
-| POST   | `/autenticacion/refresh`  | Refrescar token expirado      | ✅   |
+| Método | Endpoint                            | Descripción                   | Auth |
+| ------ | ----------------------------------- | ----------------------------- | ---- |
+| POST   | `/autenticacion/registrar`          | Registrar nuevo usuario       | ❌   |
+| POST   | `/autenticacion/login`              | Iniciar sesión (devuelve JWT) | ❌   |
+| POST   | `/autenticacion/refrescar`          | Refrescar token expirado      | ✅   |
+| GET    | `/autenticacion/validar`            | Validar token                 | ✅   |
+| GET    | `/autenticacion/yo`                 | Obtener usuario actual        | ✅   |
+| POST   | `/autenticacion/cambiar-contrasena` | Cambiar contraseña            | ✅   |
 
 #### **Ejemplo de Login**
 
@@ -152,6 +173,35 @@ POST /autenticacion/login
   "roles": ["ROLE_ADMIN", "ROLE_USER"]
 }
 ```
+
+#### **Ejemplo de Cambio de Contraseña** 🆕
+
+**Request:**
+
+```json
+POST /autenticacion/cambiar-contrasena
+Authorization: Bearer <token>
+{
+  "currentPassword": "admin123",
+  "newPassword": "nuevaSegura123",
+  "confirmPassword": "nuevaSegura123"
+}
+```
+
+**Response:**
+
+```json
+{
+  "mensaje": "Contraseña cambiada exitosamente"
+}
+```
+
+**Validaciones:**
+
+- ✅ Contraseña actual correcta
+- ✅ Nueva contraseña diferente a la actual
+- ✅ Mínimo 6 caracteres
+- ✅ Confirmación coincide con nueva contraseña
 
 #### **Componentes Clave**
 
@@ -321,14 +371,33 @@ Productos: AC001, AC002, AC003...
 
 #### **User.java**
 
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "email": "admin@ecommerce.com",
+  "firstName": "Admin",
+  "lastName": "Sistema",
+  "phone": "123456789",
+  "address": "Calle Principal 123",
+  "region": "Metropolitana",
+  "enabled": true,
+  "roles": ["ROLE_ADMIN"],
+  "createdAt": "2025-11-17T10:00:00",
+  "updatedAt": "2025-11-17T10:00:00"
+}
+```
+
 - Relación `@ManyToMany` con `Role`
 - Tabla intermedia: `user_roles`
+- Campos: `username`, `email`, `password`, `firstName`, `lastName`, `phone`, `address`, `region`, `enabled`
 - **Problema resuelto**: Lazy loading de roles con `@Transactional` y `JOIN FETCH`
 
 #### **Role.java**
 
 - `@JsonIgnore` en relación inversa para evitar ciclos JSON
 - `@EqualsAndHashCode(exclude = "users")` para evitar StackOverflow
+- Campos: `name`, `description`
 
 ### **Relación User-Role**
 
@@ -343,6 +412,102 @@ user_roles (user_id, role_id)  -- Tabla intermedia
 1. `UserRepository.findByUsernameWithRoles()` con `@Query` + `JOIN FETCH`
 2. `@Transactional(readOnly = true)` en `AuthService.login()`
 3. `user.getRoles().size()` para forzar carga dentro de transacción
+
+### **Endpoints de Usuarios**
+
+| Método | Endpoint                | Descripción                | Auth           |
+| ------ | ----------------------- | -------------------------- | -------------- |
+| GET    | `/usuarios`             | Listar todos los usuarios  | ✅ ADMIN       |
+| GET    | `/usuarios/{id}`        | Obtener usuario por ID     | ✅ ADMIN       |
+| PUT    | `/usuarios/{id}`        | Actualizar usuario         | ✅ ADMIN/Owner |
+| PATCH  | `/usuarios/{id}/estado` | Activar/Desactivar usuario | ✅ ADMIN       |
+| DELETE | `/usuarios/{id}`        | Eliminar usuario           | ✅ ADMIN       |
+
+### **Campos de Usuario**
+
+- `username` _(único, 3-50 caracteres)_
+- `email` _(único, formato válido)_
+- `password` _(mínimo 6 caracteres, encriptado)_
+- `firstName` _(obligatorio)_
+- `lastName` _(obligatorio)_
+- `phone` _(opcional)_
+- `address` _(opcional)_
+- `region` _(opcional)_ 🆕
+- `enabled` _(boolean, default: true)_
+
+---
+
+## 🎭 Módulo de Roles (user/roles)
+
+### **Gestión Completa de Roles** 🆕
+
+El sistema permite crear, editar y eliminar roles personalizados, además de los roles del sistema.
+
+### **Entidades**
+
+#### **RoleDTO.java**
+
+```json
+{
+  "id": 1,
+  "name": "ROLE_ADMIN",
+  "description": "Administrador del sistema",
+  "userCount": 5
+}
+```
+
+### **Endpoints de Roles**
+
+| Método | Endpoint      | Descripción            | Auth     |
+| ------ | ------------- | ---------------------- | -------- |
+| GET    | `/roles`      | Listar todos los roles | ✅ ADMIN |
+| GET    | `/roles/{id}` | Obtener rol por ID     | ✅ ADMIN |
+| POST   | `/roles`      | Crear nuevo rol        | ✅ ADMIN |
+| PUT    | `/roles/{id}` | Actualizar rol         | ✅ ADMIN |
+| DELETE | `/roles/{id}` | Eliminar rol           | ✅ ADMIN |
+
+### **Reglas de Negocio**
+
+✅ **Crear Rol:**
+
+- Nombre debe empezar con `ROLE_`
+- Solo mayúsculas y guiones bajos
+- Nombre único en el sistema
+
+✅ **Actualizar Rol:**
+
+- No se pueden modificar `ROLE_ADMIN` ni `ROLE_USER`
+- Validación de nombre único
+
+✅ **Eliminar Rol:**
+
+- No se pueden eliminar roles del sistema
+- No se puede eliminar si hay usuarios asignados
+
+### **Ejemplo de Creación**
+
+**Request:**
+
+```json
+POST /roles
+Authorization: Bearer <token-admin>
+
+{
+  "name": "ROLE_VENDEDOR",
+  "description": "Rol para vendedores del sistema"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": 4,
+  "name": "ROLE_VENDEDOR",
+  "description": "Rol para vendedores del sistema",
+  "userCount": 0
+}
+```
 
 ---
 
@@ -364,6 +529,32 @@ user_roles (user_id, role_id)  -- Tabla intermedia
 }
 ```
 
+### **Endpoints de Pagos**
+
+| Método | Endpoint                 | Descripción                    | Auth          |
+| ------ | ------------------------ | ------------------------------ | ------------- |
+| POST   | `/pagos`                 | Iniciar pago                   | ✅ USER       |
+| POST   | `/pagos/{id}/confirmar`  | Confirmar pago                 | ✅ USER       |
+| GET    | `/pagos/mis-pagos`       | Historial de pagos del usuario | ✅ USER       |
+| GET    | `/pagos/{id}`            | Obtener pago por ID            | ✅ USER/ADMIN |
+| GET    | `/pagos`                 | Listar todos los pagos         | ✅ ADMIN      |
+| POST   | `/pagos/{id}/reembolsar` | Reembolsar pago                | ✅ ADMIN      |
+
+### **Estados de Pago**
+
+- `PENDING` - Pago iniciado, esperando confirmación
+- `COMPLETED` - Pago completado exitosamente
+- `FAILED` - Pago fallido
+- `REFUNDED` - Pago reembolsado
+
+### **Flujo de Pago**
+
+1. **Iniciar Pago**: Usuario crea un pago con productos
+2. **Validación**: Sistema valida stock y calcula total
+3. **Confirmación**: Usuario confirma el pago
+4. **Procesamiento**: Sistema actualiza stock y genera transacción
+5. **Completado**: Pago registrado exitosamente
+
 ### **Token de Pago**
 
 Flujo de pago seguro con token temporal:
@@ -373,6 +564,66 @@ Flujo de pago seguro con token temporal:
 3. Frontend usa este token para procesar pago
 4. Backend valida token + usuario + productos
 5. Procesa pago y actualiza stock
+
+---
+
+## 📊 Módulo de Auditoría (audit) 🆕
+
+### **Sistema de Auditoría Completo**
+
+Registra todas las operaciones realizadas en el sistema usando **AOP (Aspect Oriented Programming)**.
+
+### **AuditLog.java**
+
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "roles": "ROLE_ADMIN",
+  "httpMethod": "POST",
+  "path": "/productos",
+  "action": "ProductController#createProduct",
+  "arguments": "{\"name\":\"Catan\",\"price\":29990}",
+  "success": true,
+  "details": null,
+  "timestamp": "2025-11-17T15:30:00"
+}
+```
+
+### **Características**
+
+✅ **Intercepta automáticamente** todas las operaciones en controllers
+✅ **Registra usuario y roles** de quien ejecuta la operación
+✅ **Captura argumentos** de los métodos (JSON)
+✅ **Registra éxito o error** con detalles de excepciones
+✅ **Timestamp** de cada operación
+
+### **Endpoints de Auditoría**
+
+| Método | Endpoint                      | Descripción                   | Auth     |
+| ------ | ----------------------------- | ----------------------------- | -------- |
+| GET    | `/audit/logs`                 | Listar todos los logs         | ✅ ADMIN |
+| GET    | `/audit/logs/user/{username}` | Logs de un usuario específico | ✅ ADMIN |
+| GET    | `/audit/logs/failed`          | Solo operaciones fallidas     | ✅ ADMIN |
+| GET    | `/audit/logs/recent`          | Últimos 100 registros         | ✅ ADMIN |
+
+### **AuditAspect.java**
+
+```java
+@Around("within(com.ecommerce.levelup..controller..*)")
+public Object aroundController(ProceedingJoinPoint pjp) throws Throwable {
+    // Intercepta TODOS los métodos de controllers
+    // Registra antes y después de la ejecución
+    // Captura excepciones y las registra
+}
+```
+
+### **Casos de Uso**
+
+- 🔍 **Debugging**: Ver qué operaciones fallan y por qué
+- 🔒 **Seguridad**: Detectar accesos no autorizados
+- 📈 **Análisis**: Estadísticas de uso del sistema
+- 🕵️ **Trazabilidad**: Saber quién hizo qué y cuándo
 
 ---
 
@@ -500,12 +751,13 @@ jwt.expiration=86400000  # 24 horas
 ### **Tablas Generadas**
 
 ```sql
-users
-roles
-user_roles (ManyToMany)
-categories
-products
-payments
+users          -- Usuarios del sistema
+roles          -- Roles (ADMIN, USER, etc.)
+user_roles     -- Relación ManyToMany usuarios-roles
+categories     -- Categorías de productos
+products       -- Productos del catálogo
+payments       -- Pagos y transacciones
+audit_logs     -- Registros de auditoría (nuevo)
 ```
 
 ---
@@ -607,6 +859,77 @@ Response → Code generado automáticamente: "JM001"
 GET http://localhost:8080/productos
 ```
 
+### **5. Crear Rol Personalizado**
+
+```
+POST http://localhost:8080/roles
+Headers:
+  Authorization: Bearer <token-admin>
+Body:
+{
+  "name": "ROLE_VENDEDOR",
+  "description": "Rol para vendedores"
+}
+```
+
+### **6. Cambiar Contraseña**
+
+```
+POST http://localhost:8080/autenticacion/cambiar-contrasena
+Headers:
+  Authorization: Bearer <token>
+Body:
+{
+  "currentPassword": "admin123",
+  "newPassword": "nuevaPass123",
+  "confirmPassword": "nuevaPass123"
+}
+```
+
+### **7. Ver Logs de Auditoría**
+
+```
+GET http://localhost:8080/audit/logs
+Headers:
+  Authorization: Bearer <token-admin>
+```
+
+### **8. Procesar Pago**
+
+```
+POST http://localhost:8080/pagos
+Headers:
+  Authorization: Bearer <token>
+Body:
+{
+  "totalAmount": 59990,
+  "paymentMethod": "CREDIT_CARD",
+  "cardType": "VISA",
+  "products": [
+    {
+      "productId": 1,
+      "quantity": 2
+    }
+  ]
+}
+```
+
+### **9. Actualizar Usuario**
+
+```
+PUT http://localhost:8080/usuarios/1
+Headers:
+  Authorization: Bearer <token-admin>
+Body:
+{
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "phone": "987654321",
+  "address": "Av. Principal 456",
+  "region": "Valparaíso"
+}
+```
+
 ---
 
 ## 🔧 Endpoints de Debug (Temporal)
@@ -702,18 +1025,39 @@ feature/
 
 ---
 
+## 🎯 Funcionalidades Implementadas
+
+- ✅ Autenticación y autorización con JWT
+- ✅ Gestión completa de usuarios (CRUD)
+- ✅ Gestión completa de roles (CRUD) 🆕
+- ✅ Cambio de contraseña 🆕
+- ✅ Gestión de productos y categorías
+- ✅ Generación automática de SKU
+- ✅ Sistema de pagos con validación
+- ✅ Reembolsos de pagos
+- ✅ Auditoría completa con AOP 🆕
+- ✅ Gestión de stock
+- ✅ Roles y permisos (ADMIN, USER)
+- ✅ Validaciones de negocio
+- ✅ Manejo centralizado de excepciones
+- ✅ CORS configurado para frontend
+
 ## 🎯 Próximos Pasos
 
 - [ ] Implementar paginación en listados
-- [ ] Agregar filtros avanzados (precio, stock)
+- [ ] Agregar filtros avanzados (precio, stock, categorías)
 - [ ] Sistema de imágenes (upload a servidor/S3)
 - [ ] Carrito de compras persistente
-- [ ] Historial de pedidos por usuario
-- [ ] Integración con pasarelas de pago reales
-- [ ] Notificaciones por email
-- [ ] Dashboard de administración
-- [ ] Tests unitarios y de integración
+- [ ] Órdenes/Pedidos con estados (PENDING, SHIPPED, DELIVERED)
+- [ ] Integración con pasarelas de pago reales (Stripe, PayPal)
+- [ ] Notificaciones por email (confirmación, envíos)
+- [ ] Dashboard de administración con estadísticas
+- [ ] Sistema de reviews y ratings
+- [ ] Búsqueda avanzada con Elasticsearch
+- [ ] Tests unitarios y de integración (JUnit, Mockito)
 - [ ] Documentación con Swagger/OpenAPI
+- [ ] Caché con Redis
+- [ ] Logs con ELK Stack
 
 ---
 
@@ -726,10 +1070,90 @@ feature/
 
 ---
 
+## 📋 Referencia Completa de Endpoints
+
+### **Autenticación (`/autenticacion`)**
+
+| Método | Endpoint              | Auth | Descripción             |
+| ------ | --------------------- | ---- | ----------------------- |
+| POST   | `/registrar`          | ❌   | Registrar nuevo usuario |
+| POST   | `/login`              | ❌   | Iniciar sesión          |
+| POST   | `/refrescar`          | ✅   | Refrescar token JWT     |
+| GET    | `/validar`            | ✅   | Validar token           |
+| GET    | `/yo`                 | ✅   | Obtener usuario actual  |
+| POST   | `/cambiar-contrasena` | ✅   | Cambiar contraseña 🆕   |
+
+### **Usuarios (`/usuarios`)**
+
+| Método | Endpoint       | Auth        | Descripción        |
+| ------ | -------------- | ----------- | ------------------ |
+| GET    | `/`            | ADMIN       | Listar usuarios    |
+| GET    | `/{id}`        | ADMIN       | Obtener usuario    |
+| PUT    | `/{id}`        | ADMIN/Owner | Actualizar usuario |
+| PATCH  | `/{id}/estado` | ADMIN       | Activar/Desactivar |
+| DELETE | `/{id}`        | ADMIN       | Eliminar usuario   |
+
+### **Roles (`/roles`)** 🆕
+
+| Método | Endpoint | Auth  | Descripción    |
+| ------ | -------- | ----- | -------------- |
+| GET    | `/`      | ADMIN | Listar roles   |
+| GET    | `/{id}`  | ADMIN | Obtener rol    |
+| POST   | `/`      | ADMIN | Crear rol      |
+| PUT    | `/{id}`  | ADMIN | Actualizar rol |
+| DELETE | `/{id}`  | ADMIN | Eliminar rol   |
+
+### **Productos (`/productos`)**
+
+| Método | Endpoint          | Auth  | Descripción                 |
+| ------ | ----------------- | ----- | --------------------------- |
+| GET    | `/`               | ❌    | Listar productos            |
+| GET    | `/{id}`           | ❌    | Obtener producto            |
+| GET    | `/categoria/{id}` | ❌    | Productos por categoría     |
+| GET    | `/buscar`         | ❌    | Buscar productos            |
+| GET    | `/activos`        | ❌    | Solo productos activos      |
+| POST   | `/`               | ADMIN | Crear producto (genera SKU) |
+| PUT    | `/{id}`           | ADMIN | Actualizar producto         |
+| DELETE | `/{id}`           | ADMIN | Eliminar producto           |
+
+### **Categorías (`/categorias`)**
+
+| Método | Endpoint   | Auth  | Descripción                     |
+| ------ | ---------- | ----- | ------------------------------- |
+| GET    | `/`        | ❌    | Listar categorías               |
+| GET    | `/{id}`    | ❌    | Obtener categoría               |
+| GET    | `/activas` | ❌    | Solo categorías activas         |
+| POST   | `/`        | ADMIN | Crear categoría (genera código) |
+| PUT    | `/{id}`    | ADMIN | Actualizar categoría            |
+| DELETE | `/{id}`    | ADMIN | Eliminar categoría              |
+
+### **Pagos (`/pagos`)**
+
+| Método | Endpoint           | Auth       | Descripción            |
+| ------ | ------------------ | ---------- | ---------------------- |
+| POST   | `/`                | USER       | Iniciar pago           |
+| POST   | `/{id}/confirmar`  | USER       | Confirmar pago         |
+| GET    | `/mis-pagos`       | USER       | Historial del usuario  |
+| GET    | `/{id}`            | USER/ADMIN | Obtener pago           |
+| GET    | `/`                | ADMIN      | Listar todos los pagos |
+| POST   | `/{id}/reembolsar` | ADMIN      | Reembolsar pago        |
+
+### **Auditoría (`/audit`)** 🆕
+
+| Método | Endpoint                | Auth  | Descripción               |
+| ------ | ----------------------- | ----- | ------------------------- |
+| GET    | `/logs`                 | ADMIN | Todos los logs            |
+| GET    | `/logs/user/{username}` | ADMIN | Logs de un usuario        |
+| GET    | `/logs/failed`          | ADMIN | Solo operaciones fallidas |
+| GET    | `/logs/recent`          | ADMIN | Últimos 100 registros     |
+
+---
+
 ## 📚 Referencias
 
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
 - [Spring Security + JWT](https://spring.io/guides/topicals/spring-security-architecture)
+- [Spring AOP](https://docs.spring.io/spring-framework/reference/core/aop.html)
 - [JJWT Documentation](https://github.com/jwtk/jjwt)
 - [Lombok](https://projectlombok.org/)
 
@@ -746,3 +1170,49 @@ Este proyecto es educativo y no tiene licencia comercial.
 Desarrollado como proyecto de aprendizaje de Spring Boot + React.
 
 **Fecha**: Noviembre 2025
+
+---
+
+## 🌟 Características Destacadas
+
+### **Seguridad**
+
+- 🔐 Autenticación JWT con tokens seguros (HS384)
+- 🛡️ Roles y permisos granulares
+- 🔑 Cambio de contraseña validado
+- 🚫 Protección contra accesos no autorizados
+- ✅ Validaciones en backend
+
+### **Arquitectura**
+
+- 📦 Arquitectura de capas (Controller-Service-Repository)
+- 🎯 DTOs para transferencia de datos segura
+- ⚡ Transacciones con `@Transactional`
+- 🔄 Lazy loading optimizado con JOIN FETCH
+- 🎨 AOP para auditoría automática
+
+### **Gestión de Datos**
+
+- 🏷️ Generación automática de SKU para productos
+- 🔢 Códigos automáticos para categorías
+- 📊 Validaciones de negocio completas
+- 🔄 Relaciones ManyToMany optimizadas
+- 💾 Soft delete (usuarios y productos)
+
+### **Auditoría y Trazabilidad**
+
+- 📝 Logs automáticos de todas las operaciones
+- 👤 Registro de usuario y roles en cada acción
+- ⏰ Timestamps de todas las operaciones
+- ❌ Captura de errores con stack trace
+- 🔍 Consultas filtradas por usuario o estado
+
+### **API RESTful**
+
+- 🌐 Endpoints RESTful bien estructurados
+- 📋 Respuestas JSON estándar
+- ❗ Manejo centralizado de excepciones
+- 🔧 CORS configurado para frontend
+- 📖 Documentación completa en README
+
+---

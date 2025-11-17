@@ -17,11 +17,8 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    /**
-     * Crear nueva categoría
-     */
+    
     public CategoryDTO createCategory(CategoryDTO categoryDTO) {
-        // Validar que el nombre no exista
         if (categoryRepository.existsByName(categoryDTO.getName())) {
             throw new RuntimeException("Category with name already exists: " + categoryDTO.getName());
         }
@@ -46,12 +43,8 @@ public class CategoryService {
         return convertToDTO(savedCategory);
     }
     
-    /**
-     * Generar código de categoría basado en el nombre
-     * Ej: "Juegos de Mesa" -> "JM", "Accesorios" -> "AC"
-     */
+  
     private String generateCategoryCode(String categoryName) {
-        // Remover artículos y palabras comunes
         String cleaned = categoryName.toUpperCase()
                 .replace("DE ", "")
                 .replace("LA ", "")
@@ -61,12 +54,10 @@ public class CategoryService {
         
         String[] words = cleaned.split("\\s+");
         
-        // Si solo hay una palabra, tomar las primeras 2 letras
         if (words.length == 1) {
             return words[0].substring(0, Math.min(2, words[0].length()));
         }
         
-        // Si hay múltiples palabras, tomar la primera letra de cada palabra
         StringBuilder code = new StringBuilder();
         for (String word : words) {
             if (!word.isEmpty()) {
@@ -77,50 +68,39 @@ public class CategoryService {
         return code.toString();
     }
 
-    /**
-     * Obtener todas las categorías
-     */
+    
     public List<CategoryDTO> getAllCategories() {
         return categoryRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Obtener categoría por ID
-     */
+    
     public CategoryDTO getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         return convertToDTO(category);
     }
 
-    /**
-     * Obtener categorías activas
-     */
+   
     public List<CategoryDTO> getActiveCategories() {
         return categoryRepository.findByActiveTrue().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Buscar categorías
-     */
+   
     public List<CategoryDTO> searchCategories(String keyword) {
         return categoryRepository.searchCategories(keyword).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Actualizar categoría
-     */
+    
     public CategoryDTO updateCategory(Long id, CategoryDTO categoryDTO) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
 
-        // Actualizar campos
         if (categoryDTO.getName() != null && !categoryDTO.getName().equals(category.getName())) {
             if (categoryRepository.existsByName(categoryDTO.getName())) {
                 throw new RuntimeException("Category with name already exists");
@@ -145,9 +125,7 @@ public class CategoryService {
         return convertToDTO(updatedCategory);
     }
 
-    /**
-     * Activar/Desactivar categoría
-     */
+    
     public CategoryDTO toggleCategoryStatus(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
@@ -157,14 +135,11 @@ public class CategoryService {
         return convertToDTO(updatedCategory);
     }
 
-    /**
-     * Eliminar categoría
-     */
+    
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
 
-        // Verificar que no tenga productos asociados
         if (!category.getProducts().isEmpty()) {
             throw new RuntimeException("Cannot delete category with associated products");
         }
@@ -172,9 +147,7 @@ public class CategoryService {
         categoryRepository.delete(category);
     }
 
-    /**
-     * Convertir Category a CategoryDTO
-     */
+    
     private CategoryDTO convertToDTO(Category category) {
         CategoryDTO dto = new CategoryDTO();
         dto.setId(category.getId());

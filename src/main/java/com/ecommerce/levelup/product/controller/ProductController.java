@@ -20,55 +20,35 @@ public class ProductController {
 
     private final ProductService productService;
 
-    /**
-     * Obtener todos los productos
-     * GET /api/productos
-     */
+  
     @GetMapping
     public ResponseEntity<List<ProductDTO>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
-    /**
-     * Obtener producto por ID
-     * GET /api/productos/{id}
-     */
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
-    /**
-     * Obtener productos por categoría
-     * GET /api/productos/categoria/{categoriaId}
-     */
     @GetMapping("/categoria/{categoriaId}")
     public ResponseEntity<List<ProductDTO>> getProductsByCategory(@PathVariable Long categoriaId) {
         return ResponseEntity.ok(productService.getProductsByCategory(categoriaId));
     }
 
-    /**
-     * Buscar productos
-     * GET /api/productos/buscar?consulta=texto
-     */
+  
     @GetMapping("/buscar")
     public ResponseEntity<List<ProductDTO>> searchProducts(@RequestParam String consulta) {
         return ResponseEntity.ok(productService.searchProducts(consulta));
     }
 
-    /**
-     * Obtener productos activos
-     * GET /api/productos/activos
-     */
+   
     @GetMapping("/activos")
     public ResponseEntity<List<ProductDTO>> getActiveProducts() {
         return ResponseEntity.ok(productService.getActiveProducts());
     }
 
-    /**
-     * Crear nuevo producto (Solo ADMIN)
-     * POST /api/productos
-     */
+    
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createProduct(@Valid @RequestBody ProductDTO productDTO) {
@@ -82,10 +62,7 @@ public class ProductController {
         }
     }
 
-    /**
-     * Actualizar producto (Solo ADMIN)
-     * PUT /api/productos/{id}
-     */
+ 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateProduct(
@@ -101,10 +78,7 @@ public class ProductController {
         }
     }
 
-    /**
-     * Actualizar stock (Solo ADMIN)
-     * PATCH /api/productos/{id}/stock?cantidad=50
-     */
+
     @PatchMapping("/{id}/stock")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateStock(
@@ -123,10 +97,7 @@ public class ProductController {
         }
     }
 
-    /**
-     * Eliminar producto (Solo ADMIN)
-     * DELETE /api/productos/{id}
-     */
+   
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {

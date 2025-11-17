@@ -36,16 +36,14 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getUsername(),
                 user.getPassword(),
                 user.getEnabled(),
-                true, // accountNonExpired
-                true, // credentialsNonExpired
-                true, // accountNonLocked
+                true, 
+                true, 
+                true, 
                 mapRolesToAuthorities(user.getRoles())
         );
     }
 
-    /**
-     * Cargar usuario por email
-     */
+   
     public UserDetails loadUserByEmail(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
@@ -65,9 +63,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         );
     }
 
-    /**
-     * Convertir roles a authorities de Spring Security
-     */
+   
     private Collection<? extends GrantedAuthority> mapRolesToAuthorities(Set<Role> roles) {
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority(role.getName()))

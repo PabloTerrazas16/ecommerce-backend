@@ -34,14 +34,11 @@ public class JwtFilter extends OncePerRequestFilter {
         String jwt = null;
         JwtUtil.TokenType tokenType = null;
 
-        // Extraer token del header
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
             try {
-                // Determinar tipo de token
                 tokenType = jwtUtil.getTokenType(jwt);
 
-                // Solo procesamos tokens de USUARIO para autenticación
                 if (tokenType == JwtUtil.TokenType.USER) {
                     username = jwtUtil.extractUsername(jwt, JwtUtil.TokenType.USER);
                 }
@@ -50,7 +47,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-        // Autenticar usuario si el token es válido
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 

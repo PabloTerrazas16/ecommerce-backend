@@ -25,7 +25,6 @@ public class JwtUtil {
     @Value("${jwt.payment.expiration:300000}")
     private Long paymentExpiration;
 
-    // Enum para tipos de token
     public enum TokenType {
         USER, PAYMENT
     }
@@ -34,14 +33,12 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // Generar token para autenticación
     public String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("type", TokenType.USER.name());
         return createToken(claims, username, expiration);
     }
 
-    // Generar token para pagos
     public String generatePaymentToken(Long paymentId, String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("paymentId", paymentId);
@@ -49,7 +46,6 @@ public class JwtUtil {
         return createToken(claims, username, paymentExpiration);
     }
 
-    // Crear token
     private String createToken(Map<String, Object> claims, String subject, Long expirationTime) {
         return Jwts.builder()
                 .claims(claims)
@@ -60,14 +56,12 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Obtener tipo de token
     public TokenType getTokenType(String token) {
         Claims claims = extractAllClaims(token);
         String type = claims.get("type", String.class);
         return TokenType.valueOf(type);
     }
 
-    // Extraer username del token (sin importar el tipo)
     public String extractUsername(String token, TokenType expectedType) {
         TokenType actualType = getTokenType(token);
         if (actualType != expectedType) {
@@ -76,7 +70,6 @@ public class JwtUtil {
         return getUsernameFromToken(token);
     }
 
-    // Validar token de usuario
     public Boolean validateUserToken(String token, UserDetails userDetails) {
         try {
             final String username = getUsernameFromToken(token);
@@ -89,7 +82,6 @@ public class JwtUtil {
         }
     }
 
-    // Validar token
     public Boolean validateToken(String token) {
         try {
             return !isTokenExpired(token);
@@ -98,7 +90,6 @@ public class JwtUtil {
         }
     }
 
-    // Validar token de pago
     public Boolean validatePaymentToken(String token) {
         try {
             Claims claims = extractAllClaims(token);
@@ -109,23 +100,19 @@ public class JwtUtil {
         }
     }
 
-    // Obtener username del token
     public String getUsernameFromToken(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // Obtener fecha de expiración
     public Date getExpirationDateFromToken(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    // Extraer un claim específico
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    // Extraer todos los claims
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -134,12 +121,10 @@ public class JwtUtil {
                 .getPayload();
     }
 
-    // Verificar si el token está expirado
     private Boolean isTokenExpired(String token) {
         return getExpirationDateFromToken(token).before(new Date());
     }
 
-    // Obtener ID de pago del token
     public Long getPaymentIdFromToken(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("paymentId", Long.class);

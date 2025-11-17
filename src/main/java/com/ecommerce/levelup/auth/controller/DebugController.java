@@ -17,45 +17,33 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * ⚠️ CONTROLADOR DE DEBUG - SOLO PARA DESARROLLO
- * Este controlador solo está activo cuando el perfil "dev" está activado.
- * En producción (perfil "prod") estos endpoints NO estarán disponibles.
- */
+
 @RestController
 @RequestMapping("/debug")
 @RequiredArgsConstructor
 @Slf4j
-@Profile("dev")  // ← Solo activo en desarrollo
+@Profile("dev")  
 public class DebugController {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Endpoint para resetear la contraseña del admin y asignar roles
-     */
     @PostMapping("/reset-admin")
     @Transactional
     public ResponseEntity<?> resetAdmin() {
         try {
-            // Buscar usuario admin
             User admin = userRepository.findByUsername("admin")
                     .orElseThrow(() -> new RuntimeException("Admin no encontrado"));
 
-            // Resetear contraseña
             admin.setPassword(passwordEncoder.encode("admin123"));
 
-            // Buscar rol ROLE_ADMIN
             Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseThrow(() -> new RuntimeException("ROLE_ADMIN no encontrado"));
 
-            // Limpiar roles existentes y agregar el rol admin
             admin.getRoles().clear();
             admin.getRoles().add(adminRole);
 
-            // Guardar cambios
             User savedAdmin = userRepository.save(admin);
 
             log.info("✅ Admin reseteado exitosamente");
@@ -77,9 +65,7 @@ public class DebugController {
         }
     }
 
-    /**
-     * Endpoint para ver información del usuario admin
-     */
+   
     @GetMapping("/admin-info")
     @Transactional
     public ResponseEntity<?> getAdminInfo() {
@@ -102,9 +88,6 @@ public class DebugController {
         }
     }
 
-    /**
-     * Endpoint para verificar todos los usuarios
-     */
     @GetMapping("/all-users")
     @Transactional
     public ResponseEntity<?> getAllUsers() {

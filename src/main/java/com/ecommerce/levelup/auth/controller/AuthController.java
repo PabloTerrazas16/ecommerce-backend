@@ -1,5 +1,6 @@
 package com.ecommerce.levelup.auth.controller;
 
+import com.ecommerce.levelup.auth.dto.ChangePasswordRequest;
 import com.ecommerce.levelup.auth.dto.LoginRequest;
 import com.ecommerce.levelup.auth.dto.LoginResponse;
 import com.ecommerce.levelup.auth.dto.RegisterRequest;
@@ -9,6 +10,8 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -21,10 +24,7 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    /**
-     * Registrar nuevo usuario
-     * POST /api/autenticacion/registrar
-     */
+   
     @PostMapping("/registrar")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
@@ -42,10 +42,7 @@ public class AuthController {
         }
     }
 
-    /**
-     * Login de usuario
-     * POST /api/autenticacion/login
-     */
+    
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
@@ -59,10 +56,7 @@ public class AuthController {
         }
     }
 
-    /**
-     * Refrescar token
-     * POST /api/autenticacion/refrescar
-     */
+  
     @PostMapping("/refrescar")
     public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String token) {
         try {
@@ -78,10 +72,7 @@ public class AuthController {
         }
     }
 
-    /**
-     * Validar token
-     * GET /api/autenticacion/validar
-     */
+    
     @GetMapping("/validar")
     public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String token) {
         try {
@@ -102,10 +93,7 @@ public class AuthController {
         }
     }
 
-    /**
-     * Obtener usuario actual
-     * GET /api/autenticacion/yo
-     */
+ 
     @GetMapping("/yo")
     public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String token) {
         try {
@@ -115,6 +103,32 @@ public class AuthController {
             Map<String, String> error = new HashMap<>();
             error.put("error", "No se pudo obtener el usuario");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
+    }
+
+ 
+    @PostMapping("/cambiar-contrasena")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Las contraseñas no coinciden");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            authService.changePassword(username, request.getCurrentPassword(), request.getNewPassword());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("mensaje", "Contraseña cambiada exitosamente");
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 }

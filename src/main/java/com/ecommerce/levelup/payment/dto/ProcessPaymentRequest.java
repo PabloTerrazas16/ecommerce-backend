@@ -9,5 +9,5 @@ public class ProcessPaymentRequest {
     private String expirationMonth;
     private String expirationYear;
     private String cvv;
-    private String cardType; // VISA, MASTERCARD, AMEX, etc.
+    private String cardType; 
 }

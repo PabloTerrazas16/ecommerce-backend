@@ -18,29 +18,22 @@ public class UserController {
 
     private final UserService userService;
 
-    /**
-     * Obtener todos los usuarios (Solo ADMIN)
-     * GET /api/usuarios
-     */
+    
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    /**
-     * Obtener usuario por ID (Solo ADMIN)
-     * GET /api/usuarios/{id}
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
-    /**
-     * Actualizar usuario (Solo ADMIN o el mismo usuario)
-     * PUT /api/usuarios/{id}
+    /*
+      Actualizar usuario (Solo ADMIN o el mismo usuario)
+      PUT /api/usuarios/{id}
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#id)")
@@ -57,10 +50,7 @@ public class UserController {
         }
     }
 
-    /**
-     * Activar/Desactivar usuario (Solo ADMIN)
-     * PATCH /api/usuarios/{id}/estado?activo=true
-     */
+    
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> toggleUserStatus(
@@ -78,10 +68,7 @@ public class UserController {
         }
     }
 
-    /**
-     * Eliminar usuario (Solo ADMIN)
-     * DELETE /api/usuarios/{id}
-     */
+ 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {

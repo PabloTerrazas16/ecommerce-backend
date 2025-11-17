@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class ProductDTO {
     private Long id;
     
-    private String code; // SKU generado automáticamente
+    private String code; // Se genera automaticamente
 
     @NotBlank(message = "Product name is required")
     private String name;
@@ -29,9 +29,9 @@ public class ProductDTO {
     @NotNull(message = "Category ID is required")
     private Long categoryId;
     
-    private String category; // Nombre de la categoría
+    private String category; 
     
-    private String image; // URL de la imagen
+    private String image;
     
     private String description;
 
@@ -39,7 +39,7 @@ public class ProductDTO {
     @Min(value = 0, message = "Stock cannot be negative")
     private Integer stock;
     
-    private Boolean featured; // Producto destacado
+    private Boolean featured; 
     
     private Boolean active;
     

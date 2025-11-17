@@ -8,23 +8,20 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 
 @RestController
-@RequestMapping("/api/admin/audit")
+@RequestMapping("/audit")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AuditController {
 
     private final AuditLogRepository repository;
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/logs")
     public ResponseEntity<Page<AuditLog>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -35,7 +32,7 @@ public class AuditController {
             @RequestParam(required = false) String to,
             @RequestParam(required = false, defaultValue = "timestamp,desc") String sort
     ) {
-        // Parse sort
+      
         String[] sortParts = sort.split(",");
         Sort.Direction dir = Sort.Direction.DESC;
         String sortField = "timestamp";
@@ -67,7 +64,7 @@ public class AuditController {
                 LocalDateTime fromDt = LocalDateTime.parse(from);
                 spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("timestamp"), fromDt));
             } catch (DateTimeParseException e) {
-                // ignore invalid date, alternatively return bad request
+              
             }
         }
 
@@ -76,11 +73,56 @@ public class AuditController {
                 LocalDateTime toDt = LocalDateTime.parse(to);
                 spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("timestamp"), toDt));
             } catch (DateTimeParseException e) {
-                // ignore invalid date
+              
             }
         }
 
         Page<AuditLog> p = repository.findAll(spec, pageable);
         return ResponseEntity.ok(p);
+    }
+
+    /**
+     * Obtener logs de un usuario específico
+     * GET /audit/logs/user/{username}
+     */
+    @GetMapping("/logs/user/{username}")
+    public ResponseEntity<Page<AuditLog>> getByUsername(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @PathVariable String username
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
+        Specification<AuditLog> spec = (root, query, cb) -> 
+            cb.equal(cb.lower(root.get("username")), username.toLowerCase());
+        
+        Page<AuditLog> logs = repository.findAll(spec, pageable);
+        return ResponseEntity.ok(logs);
+    }
+
+    /**
+     * Obtener solo operaciones fallidas
+     * GET /audit/logs/failed
+     */
+    @GetMapping("/logs/failed")
+    public ResponseEntity<Page<AuditLog>> getFailedOperations(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
+        Specification<AuditLog> spec = (root, query, cb) -> cb.equal(root.get("success"), false);
+        
+        Page<AuditLog> logs = repository.findAll(spec, pageable);
+        return ResponseEntity.ok(logs);
+    }
+
+    /**
+     * Obtener registros recientes (últimos 100)
+     * GET /audit/logs/recent
+     */
+    @GetMapping("/logs/recent")
+    public ResponseEntity<Page<AuditLog>> getRecentLogs() {
+        Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "timestamp"));
+        Page<AuditLog> logs = repository.findAll(pageable);
+        return ResponseEntity.ok(logs);
     }
 }

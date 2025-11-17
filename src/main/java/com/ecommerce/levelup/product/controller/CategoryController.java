@@ -20,37 +20,25 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    /**
-     * Obtener todas las categorías
-     * GET /api/categorias
-     */
+    
+    
     @GetMapping
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
-    /**
-     * Obtener categoría por ID
-     * GET /api/categorias/{id}
-     */
+   
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 
-    /**
-     * Obtener categorías activas
-     * GET /api/categorias/activas
-     */
     @GetMapping("/activas")
     public ResponseEntity<List<CategoryDTO>> getActiveCategories() {
         return ResponseEntity.ok(categoryService.getActiveCategories());
     }
 
-    /**
-     * Crear nueva categoría (Solo ADMIN)
-     * POST /api/categorias
-     */
+   
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
@@ -64,10 +52,7 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Actualizar categoría (Solo ADMIN)
-     * PUT /api/categorias/{id}
-     */
+    
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateCategory(
@@ -83,10 +68,6 @@ public class CategoryController {
         }
     }
 
-    /**
-     * Eliminar categoría (Solo ADMIN)
-     * DELETE /api/categorias/{id}
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteCategory(@PathVariable Long id) {

@@ -30,27 +30,21 @@ public class PaymentService {
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Iniciar pago
-     */
+   
     @Transactional
     public Map<String, Object> initiatePayment(PaymentDTO paymentDTO) {
-        // Obtener usuario autenticado
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Validar monto
         if (paymentDTO.getTotalAmount() == null || paymentDTO.getTotalAmount().doubleValue() <= 0) {
             throw new RuntimeException("El monto total debe ser mayor a 0");
         }
 
-        // Validar productos
         if (paymentDTO.getProducts() == null || paymentDTO.getProducts().isEmpty()) {
             throw new RuntimeException("Debe incluir al menos un producto");
         }
 
-        // Crear pago
         Payment payment = new Payment();
         payment.setUserId(user.getId());
         payment.setUserEmail(paymentDTO.getUserEmail() != null ? paymentDTO.getUserEmail() : user.getEmail());
@@ -68,7 +62,6 @@ public class PaymentService {
         payment.setTaxAmount(paymentDTO.getTaxAmount());
         payment.setCreatedAt(LocalDateTime.now());
 
-        // Convertir productos a JSON
         try {
             String productsJson = objectMapper.writeValueAsString(paymentDTO.getProducts());
             payment.setProductsJson(productsJson);
@@ -76,13 +69,11 @@ public class PaymentService {
             throw new RuntimeException("Error al procesar los productos");
         }
 
-        // Generar token de pago
         String paymentToken = jwtUtil.generatePaymentToken(payment.getId(), user.getUsername());
         payment.setPaymentToken(paymentToken);
 
         Payment saved = paymentRepository.save(payment);
 
-        // Preparar respuesta
         Map<String, Object> response = new HashMap<>();
         response.put("pagoId", saved.getId());
         response.put("tokenPago", paymentToken);
@@ -93,33 +84,25 @@ public class PaymentService {
         return response;
     }
 
-    /**
-     * Confirmar pago
-     */
+    
     @Transactional
     public Map<String, Object> confirmPayment(Long paymentId, ProcessPaymentRequest request, String paymentToken) {
-        // Validar token de pago
         String cleanToken = paymentToken.replace("Bearer ", "");
         if (!jwtUtil.validatePaymentToken(cleanToken)) {
             throw new RuntimeException("Token de pago inválido o expirado");
         }
 
-        // Buscar pago
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + paymentId));
 
-        // Validar que el pago esté pendiente
         if (!"PENDIENTE".equals(payment.getStatus())) {
             throw new RuntimeException("El pago ya fue procesado o cancelado");
         }
 
-        // Validar token corresponde a este pago
         if (!cleanToken.equals(payment.getPaymentToken())) {
             throw new RuntimeException("El token no corresponde a este pago");
         }
 
-        // Simular procesamiento de pago
-        // En producción, aquí se integraría con un gateway de pago real
         boolean paymentSuccess = processPaymentSimulation(request);
 
         if (paymentSuccess) {
@@ -136,7 +119,6 @@ public class PaymentService {
 
         Payment updated = paymentRepository.save(payment);
 
-        // Preparar respuesta
         Map<String, Object> response = new HashMap<>();
         response.put("exitoso", paymentSuccess);
         response.put("mensaje", updated.getStatusMessage());
@@ -146,9 +128,7 @@ public class PaymentService {
         return response;
     }
 
-    /**
-     * Obtener pagos del usuario autenticado
-     */
+   
     public List<PaymentDTO> getUserPayments() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username)
@@ -159,14 +139,11 @@ public class PaymentService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Obtener pago por ID
-     */
+   
     public PaymentDTO getPaymentById(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + id));
 
-        // Verificar que el usuario autenticado sea el dueño del pago o sea ADMIN
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -181,18 +158,13 @@ public class PaymentService {
         return convertToDTO(payment);
     }
 
-    /**
-     * Obtener todos los pagos
-     */
+   
     public List<PaymentDTO> getAllPayments() {
         return paymentRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Reembolsar pago
-     */
     @Transactional
     public void refundPayment(Long id) {
         Payment payment = paymentRepository.findById(id)
@@ -212,19 +184,13 @@ public class PaymentService {
         paymentRepository.save(payment);
     }
 
-    /**
-     * Simulación de procesamiento de pago
-     */
     private boolean processPaymentSimulation(ProcessPaymentRequest request) {
-        // Simulación simple: validar que la tarjeta tenga 16 dígitos
-        // En producción, esto sería una llamada a un gateway de pago real
+    
         return request.getCardNumber() != null &&
                 request.getCardNumber().replaceAll("\\s", "").length() == 16;
     }
 
-    /**
-     * Convertir Payment a PaymentDTO
-     */
+   
     private PaymentDTO convertToDTO(Payment payment) {
         PaymentDTO dto = new PaymentDTO();
         dto.setId(payment.getId());
@@ -247,13 +213,12 @@ public class PaymentService {
         dto.setCompletedAt(payment.getCompletedAt());
         dto.setRefundedAt(payment.getRefundedAt());
 
-        // Convertir JSON de productos de vuelta a lista
         if (payment.getProductsJson() != null) {
             try {
                 List<?> products = objectMapper.readValue(payment.getProductsJson(), List.class);
                 dto.setProducts(products);
             } catch (JsonProcessingException e) {
-                // Ignorar error
+               
             }
         }
 

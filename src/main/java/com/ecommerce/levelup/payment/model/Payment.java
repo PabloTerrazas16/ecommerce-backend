@@ -23,7 +23,6 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Información del Usuario
     @NotNull(message = "ID del Usuario")
     @Column(nullable = false)
     private Long userId;
@@ -35,11 +34,10 @@ public class Payment {
     @Column(length = 100)
     private String userName;
 
-    // Información de Productos (JSON String o texto)
     @Column(columnDefinition = "TEXT")
-    private String productsJson; // Guardar JSON con productos [{id, name, quantity, price}, ...]
+    private String productsJson; 
 
-    // Montos
+
     @NotNull(message = "Monto total")
     @DecimalMin(value = "0.0", inclusive = false, message = "El monto debe ser mayor a 0")
     @Column(nullable = false, precision = 10, scale = 2)
@@ -51,32 +49,29 @@ public class Payment {
     @Column(precision = 10, scale = 2)
     private BigDecimal shippingCost;
 
-    // Información de Pago
     @NotBlank(message = "Pago")
     @Column(nullable = false, length = 50)
-    private String paymentMethod; // CREDIT_CARD, DEBIT_CARD, PAYPAL, etc.
+    private String paymentMethod; 
 
     @Column(length = 100)
     private String cardLastFourDigits;
 
     @Column(length = 50)
-    private String cardType; // VISA, MASTERCARD, etc.
+    private String cardType;
 
     @Column(unique = true, length = 100)
     private String transactionId;
 
-    @Column(unique = true, length = 100)
-    private String paymentToken; // Token JWT para este pago
+    @Column(unique = true, length = 1000)
+    private String paymentToken;
 
-    // Estado del Pago
     @NotBlank(message = "Estado del Pago")
     @Column(nullable = false, length = 50)
-    private String status; // PENDING, COMPLETED, FAILED, REFUNDED, CANCELLED
+    private String status; 
 
     @Column(length = 500)
     private String statusMessage;
 
-    // Información de Envío
     @Column(length = 200)
     private String shippingAddress;
 
@@ -92,7 +87,7 @@ public class Payment {
     @Column(length = 20)
     private String shippingPhone;
 
-    // Fechas
+  
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -103,21 +98,18 @@ public class Payment {
     @Column
     private LocalDateTime refundedAt;
 
-    // Información adicional
     @Column(length = 1000)
     private String notes;
 
     @Column(length = 50)
     private String ipAddress;
 
-    // Estados de pago predefinidos
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_FAILED = "FAILED";
     public static final String STATUS_REFUNDED = "REFUNDED";
     public static final String STATUS_CANCELLED = "CANCELLED";
 
-    // Métodos de pago predefinidos
     public static final String METHOD_CREDIT_CARD = "CREDIT_CARD";
     public static final String METHOD_DEBIT_CARD = "DEBIT_CARD";
     public static final String METHOD_PAYPAL = "PAYPAL";

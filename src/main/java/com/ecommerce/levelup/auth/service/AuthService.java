@@ -35,27 +35,21 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
 
-    /**
-     * Registrar nuevo usuario
-     */
+  
     @Transactional
     public void register(RegisterRequest request) {
-        // Validar si el email ya existe
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("El email ya está registrado");
         }
 
-        // Validar si el username ya existe
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("El nombre de usuario ya está en uso");
         }
 
-        // Validar longitud de contraseña
         if (request.getPassword().length() < 6) {
             throw new RuntimeException("La contraseña debe tener al menos 6 caracteres");
         }
 
-        // Crear nuevo usuario
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -69,7 +63,6 @@ public class AuthService {
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
-        // Asignar rol USER por defecto
         Role userRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new RuntimeException("Rol USER no encontrado"));
 
@@ -80,9 +73,7 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    /**
-     * Login de usuario
-     */
+ 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         log.info("=== INICIO LOGIN ===");
@@ -99,7 +90,6 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(authentication.getName());
 
-        // Usar findByUsernameWithRoles para cargar roles con JOIN FETCH
         User user = userRepository.findByUsernameWithRoles(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found after authentication"));
 
@@ -108,30 +98,26 @@ public class AuthService {
         log.info("Roles en el objeto User: {}", user.getRoles());
         log.info("Cantidad de roles: {}", user.getRoles().size());
         
-        // Si no hay roles, asignar manualmente desde la base de datos
         Set<String> roles;
         if (user.getRoles().isEmpty()) {
-            log.warn("⚠️ ROLES VACÍOS - Buscando roles directamente desde RoleRepository");
+            log.warn(" ROLES VACÍOS - Buscando roles directamente desde RoleRepository");
             
-            // Buscar todos los roles y agregarlos al usuario
             Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseThrow(() -> new RuntimeException("ROLE_ADMIN no encontrado"));
             
             user.getRoles().add(adminRole);
             userRepository.save(user);
             
-            log.info("✅ Rol ROLE_ADMIN agregado al usuario admin");
+            log.info(" Rol ROLE_ADMIN agregado al usuario admin");
             
             roles = user.getRoles().stream()
                     .map(Role::getName)
                     .collect(Collectors.toSet());
         } else {
-            // Forzar inicialización de la colección de roles
             user.getRoles().forEach(role -> {
                 log.info("Role ID: {}, Name: {}", role.getId(), role.getName());
             });
 
-            // Extraer roles
             roles = user.getRoles().stream()
                     .map(Role::getName)
                     .collect(Collectors.toSet());
@@ -148,27 +134,20 @@ public class AuthService {
                 .roles(roles)
                 .build();
     }
-    /**
-     * Refrescar token
-     */
+    
     public String refreshToken(String oldToken) {
         try {
-            // Remover "Bearer " del token
             String token = oldToken.replace("Bearer ", "");
 
-            // Validar token
             if (!jwtUtil.validateToken(token)) {
                 throw new RuntimeException("Token inválido o expirado");
             }
 
-            // Obtener username del token
             String username = jwtUtil.getUsernameFromToken(token);
 
-            // Verificar que el usuario existe
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Generar nuevo token
             return jwtUtil.generateToken(username);
 
         } catch (Exception e) {
@@ -176,9 +155,7 @@ public class AuthService {
         }
     }
 
-    /**
-     * Validar token
-     */
+   
     public boolean validateToken(String token) {
         try {
             String cleanToken = token.replace("Bearer ", "");
@@ -188,9 +165,7 @@ public class AuthService {
         }
     }
 
-    /**
-     * Obtener username desde el token
-     */
+    
     public String getUsernameFromToken(String token) {
         try {
             String cleanToken = token.replace("Bearer ", "");
@@ -200,9 +175,7 @@ public class AuthService {
         }
     }
 
-    /**
-     * Obtener usuario actual desde el token
-     */
+    
     public UserDTO getCurrentUser(String token) {
         try {
             String username = getUsernameFromToken(token);
@@ -213,6 +186,30 @@ public class AuthService {
         } catch (Exception e) {
             throw new RuntimeException("No se pudo obtener el usuario actual: " + e.getMessage());
         }
+    }
+
+    @Transactional
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("La contraseña actual es incorrecta");
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new RuntimeException("La nueva contraseña debe ser diferente a la actual");
+        }
+
+        if (newPassword.length() < 6) {
+            throw new RuntimeException("La nueva contraseña debe tener al menos 6 caracteres");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        log.info("Contraseña cambiada exitosamente para el usuario: {}", username);
     }
 
     private UserDTO convertToDTO(User user) {
@@ -226,7 +223,6 @@ public class AuthService {
         dto.setPhone(user.getPhone());
         dto.setAddress(user.getAddress());
         dto.setRegion(user.getRegion());
-        dto.setCity(user.getCity());
         dto.setEnabled(user.getEnabled());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());

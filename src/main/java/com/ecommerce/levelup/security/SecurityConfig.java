@@ -29,42 +29,34 @@ public class SecurityConfig {
     private JwtFilter jwtFilter;
 
     @Autowired
-    private CorsConfigurationSource corsConfigurationSource; // ← Inyecta el bean de CorsConfig
-
+    private CorsConfigurationSource corsConfigurationSource; 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
 .cors(cors -> cors.configurationSource(corsConfigurationSource))                .authorizeHttpRequests(auth -> auth
-                        // Rutas públicas
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/autenticacion/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/products/public/**").permitAll()
                         .requestMatchers("/api/categories/public/**").permitAll()
 
-                        // Rutas de productos (GET público, POST/PUT/DELETE requieren autenticación)
-                        .requestMatchers("/productos").permitAll() // GET público
-                        .requestMatchers("/productos/**").permitAll() // GET por ID público
-                        .requestMatchers("/categorias").permitAll() // GET público
-                        .requestMatchers("/categorias/**").permitAll() // GET por ID público
+                        .requestMatchers("/productos").permitAll()
+                        .requestMatchers("/productos/**").permitAll() 
+                        .requestMatchers("/categorias").permitAll() 
+                        .requestMatchers("/categorias/**").permitAll() 
                         
-                        // Rutas de productos (requieren token público o de usuario)
                         .requestMatchers("/api/products/**").permitAll()
                         .requestMatchers("/api/categories/**").permitAll()
 
-                        // Rutas de usuario
                         .requestMatchers("/api/users/**").authenticated()
 
-                        // Rutas de pagos (requieren token de usuario)
                         .requestMatchers("/api/payments/token").authenticated()
                         .requestMatchers("/api/payments/process").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
 
-                        // Rutas de administración
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // Todas las demás rutas requieren autenticación
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

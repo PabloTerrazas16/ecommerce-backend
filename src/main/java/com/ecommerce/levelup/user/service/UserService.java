@@ -18,27 +18,20 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    /**
-     * Obtener todos los usuarios
-     */
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Obtener usuario por ID
-     */
+   
     public UserDTO getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
         return convertToDTO(user);
     }
 
-    /**
-     * Habilitar/Deshabilitar usuario
-     */
+   
     @Transactional
     public void toggleUserStatus(Long id, Boolean active) {
         User user = userRepository.findById(id)
@@ -49,15 +42,12 @@ public class UserService {
         userRepository.save(user);
     }
 
-    /**
-     * Eliminar usuario
-     */
+   
     @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
 
-        // No permitir eliminar si es el último admin
         boolean isAdmin = user.getRoles().stream()
                 .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
 
@@ -75,15 +65,12 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    /**
-     * Actualizar usuario
-     */
+   
     @Transactional
     public UserDTO updateUser(Long id, UserDTO userDTO) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
 
-        // Validar email único (si cambió)
         if (userDTO.getEmail() != null && !userDTO.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(userDTO.getEmail())) {
                 throw new RuntimeException("El email ya está registrado");
@@ -91,7 +78,6 @@ public class UserService {
             user.setEmail(userDTO.getEmail());
         }
 
-        // Actualizar campos básicos (solo si vienen en el DTO)
         if (userDTO.getFirstName() != null) {
             user.setFirstName(userDTO.getFirstName());
         }
@@ -118,9 +104,7 @@ public class UserService {
         return convertToDTO(updated);
     }
 
-    /**
-     * Convertir User a UserDTO
-     */
+ 
     private UserDTO convertToDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());

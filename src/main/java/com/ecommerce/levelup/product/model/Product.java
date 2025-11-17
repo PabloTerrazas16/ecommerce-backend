@@ -26,7 +26,7 @@ public class Product {
     private Long id;
 
     @Column(unique = true, length = 50)
-    private String code; // SKU generado automáticamente (ej: JM001, AC002)
+    private String code; // SKU generado automáticamente
 
     @NotBlank(message = "Nombre del producto requerido")
     @Column(nullable = false, length = 200)
@@ -43,7 +43,7 @@ public class Product {
     private Category category;
 
     @Column(length = 500)
-    private String image; // URL de la imagen
+    private String image; 
 
     @Column(length = 1000)
     private String description;
@@ -54,7 +54,7 @@ public class Product {
     private Integer stock;
 
     @Column(nullable = false)
-    private Boolean featured = false; // Producto destacado
+    private Boolean featured = false; 
 
     @Column(nullable = false)
     private Boolean active = true;
@@ -67,7 +67,7 @@ public class Product {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // Helper methods
+    // métodos helper
     public boolean isAvailable() {
         return active && stock > 0;
     }

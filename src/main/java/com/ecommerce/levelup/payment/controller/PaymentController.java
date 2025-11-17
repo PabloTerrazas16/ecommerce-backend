@@ -21,10 +21,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    /**
-     * Iniciar pago
-     * POST /api/pagos
-     */
+   
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> initiatePayment(@Valid @RequestBody PaymentDTO paymentDTO) {
@@ -38,10 +35,7 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Confirmar pago
-     * POST /api/pagos/{id}/confirmar
-     */
+   
     @PostMapping("/{id}/confirmar")
     public ResponseEntity<?> confirmPayment(
             @PathVariable Long id,
@@ -57,40 +51,26 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Obtener mis pagos
-     * GET /api/pagos/mis-pagos
-     */
+    
     @GetMapping("/mis-pagos")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PaymentDTO>> getMyPayments() {
         return ResponseEntity.ok(paymentService.getUserPayments());
     }
 
-    /**
-     * Obtener pago por ID
-     * GET /api/pagos/{id}
-     */
+   
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PaymentDTO> getPaymentById(@PathVariable Long id) {
         return ResponseEntity.ok(paymentService.getPaymentById(id));
     }
-
-    /**
-     * Obtener todos los pagos (Solo ADMIN)
-     * GET /api/pagos
-     */
+ 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PaymentDTO>> getAllPayments() {
         return ResponseEntity.ok(paymentService.getAllPayments());
     }
 
-    /**
-     * Reembolsar pago (Solo ADMIN)
-     * POST /api/pagos/{id}/reembolsar
-     */
     @PostMapping("/{id}/reembolsar")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> refundPayment(@PathVariable Long id) {

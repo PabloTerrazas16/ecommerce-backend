@@ -13,13 +13,13 @@ public class AuditLog {
 
     private String username;
 
-    private String roles; // comma separated
+    private String roles;
 
     private String httpMethod;
 
     private String path;
 
-    private String action; // e.g., Controller.method
+    private String action; 
 
     @Column(length = 2000)
     private String arguments;
@@ -27,14 +27,13 @@ public class AuditLog {
     private Boolean success;
 
     @Column(length = 2000)
-    private String details; // exception message or additional info
+    private String details; 
 
     private LocalDateTime timestamp = LocalDateTime.now();
 
     public AuditLog() {
     }
 
-    // getters/setters
 
     public Long getId() {
         return id;

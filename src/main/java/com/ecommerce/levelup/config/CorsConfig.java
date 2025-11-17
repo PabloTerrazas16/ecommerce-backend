@@ -20,22 +20,16 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Orígenes permitidos (tu frontend React)
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
 
-        // Métodos HTTP permitidos
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Headers permitidos
         configuration.setAllowedHeaders(Arrays.asList("*"));
 
-        // Permitir credenciales (cookies, authorization headers)
-        configuration.setAllowCredentials(false); // ← CAMBIA ESTO: true → false
+        configuration.setAllowCredentials(false); 
 
-        // Headers expuestos
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
 
-        // Max age del preflight (OPTIONS)
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
