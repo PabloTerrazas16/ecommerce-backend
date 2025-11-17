@@ -81,10 +81,6 @@ public class AuditController {
         return ResponseEntity.ok(p);
     }
 
-    /**
-     * Obtener logs de un usuario específico
-     * GET /audit/logs/user/{username}
-     */
     @GetMapping("/logs/user/{username}")
     public ResponseEntity<Page<AuditLog>> getByUsername(
             @RequestParam(defaultValue = "0") int page,
@@ -99,10 +95,7 @@ public class AuditController {
         return ResponseEntity.ok(logs);
     }
 
-    /**
-     * Obtener solo operaciones fallidas
-     * GET /audit/logs/failed
-     */
+   
     @GetMapping("/logs/failed")
     public ResponseEntity<Page<AuditLog>> getFailedOperations(
             @RequestParam(defaultValue = "0") int page,
@@ -115,10 +108,7 @@ public class AuditController {
         return ResponseEntity.ok(logs);
     }
 
-    /**
-     * Obtener registros recientes (últimos 100)
-     * GET /audit/logs/recent
-     */
+   
     @GetMapping("/logs/recent")
     public ResponseEntity<Page<AuditLog>> getRecentLogs() {
         Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "timestamp"));
