@@ -28,6 +28,5 @@ public class PaymentDTO {
     private LocalDateTime completedAt;
     private LocalDateTime refundedAt;
     
-    // Campo para productos
     private List<?> products;
 }

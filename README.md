@@ -350,6 +350,7 @@ Productos: AC001, AC002, AC003...
 | GET    | `/productos/activos`               | Solo productos activos      | ❌       |
 | POST   | `/productos`                       | Crear producto (genera SKU) | ✅ ADMIN |
 | PUT    | `/productos/{id}`                  | Actualizar producto         | ✅ ADMIN |
+| PATCH  | `/productos/{id}/stock`            | Actualizar stock solamente  | ✅ ADMIN |
 | DELETE | `/productos/{id}`                  | Eliminar producto           | ✅ ADMIN |
 
 ### **Endpoints de Categorías**
@@ -378,9 +379,11 @@ Productos: AC001, AC002, AC003...
   "email": "admin@ecommerce.com",
   "firstName": "Admin",
   "lastName": "Sistema",
+  "fullName": "Admin Sistema",
   "phone": "123456789",
   "address": "Calle Principal 123",
   "region": "Metropolitana",
+  "city": "Santiago",
   "enabled": true,
   "roles": ["ROLE_ADMIN"],
   "createdAt": "2025-11-17T10:00:00",
@@ -390,7 +393,8 @@ Productos: AC001, AC002, AC003...
 
 - Relación `@ManyToMany` con `Role`
 - Tabla intermedia: `user_roles`
-- Campos: `username`, `email`, `password`, `firstName`, `lastName`, `phone`, `address`, `region`, `enabled`
+- Campos: `username`, `email`, `password`, `firstName`, `lastName`, `phone`, `address`, `region`, `city`, `enabled`
+- Campo calculado: `fullName` (firstName + lastName)
 - **Problema resuelto**: Lazy loading de roles con `@Transactional` y `JOIN FETCH`
 
 #### **Role.java**
@@ -430,9 +434,11 @@ user_roles (user_id, role_id)  -- Tabla intermedia
 - `password` _(mínimo 6 caracteres, encriptado)_
 - `firstName` _(obligatorio)_
 - `lastName` _(obligatorio)_
-- `phone` _(opcional)_
-- `address` _(opcional)_
-- `region` _(opcional)_ 🆕
+- `fullName` _(calculado automáticamente)_
+- `phone` _(opcional, máx. 20 caracteres)_
+- `address` _(opcional, máx. 200 caracteres)_
+- `region` _(opcional, máx. 100 caracteres)_ 🆕
+- `city` _(opcional, máx. 100 caracteres)_ 🆕
 - `enabled` _(boolean, default: true)_
 
 ---
@@ -675,6 +681,61 @@ Manejo centralizado de errores con `@RestControllerAdvice`:
 }
 ```
 
+**Códigos de Estado HTTP:**
+
+- `200 OK`: Operación exitosa
+- `201 Created`: Recurso creado exitosamente
+- `400 Bad Request`: Error de validación o negocio
+- `401 Unauthorized`: No autenticado o token inválido
+- `403 Forbidden`: No tiene permisos suficientes
+- `404 Not Found`: Recurso no encontrado
+- `500 Internal Server Error`: Error del servidor
+
+---
+
+## 🔄 Características Técnicas Avanzadas
+
+### **Gestión de Stock Automática**
+
+- El sistema actualiza el stock automáticamente al confirmar un pago
+- Método `decreaseStock()` en la entidad Product valida disponibilidad
+- Transacciones garantizan integridad (si falla el pago, no se reduce stock)
+- Endpoint específico `PATCH /productos/{id}/stock` para ajustes manuales
+
+### **Generación de Códigos**
+
+- **SKU de Productos**: Formato `CATEGORIA###` (ej: JM001, JM002)
+- **Códigos de Categoría**: Definidos manualmente al crear (ej: JM, AC, EL)
+- **IDs de Transacción**: UUID únicos para cada pago
+- Algoritmo busca el último código y genera el siguiente secuencialmente
+
+### **Auditoría AOP**
+
+```java
+@Around("within(com.ecommerce.levelup..controller..*)")
+```
+
+- Intercepta **todos** los métodos de controladores
+- Captura automáticamente: usuario, roles, método HTTP, path, argumentos
+- Registra éxito/error con detalles de excepción
+- Performance: mínimo overhead (~1-2ms por request)
+
+### **Seguridad en Capas**
+
+1. **Nivel de Red**: CORS configurado
+2. **Nivel de Filtro**: JwtFilter valida tokens
+3. **Nivel de Método**: `@PreAuthorize` en cada endpoint
+4. **Nivel de Datos**: Validaciones con Jakarta Validation
+5. **Nivel de Negocio**: Lógica adicional en servicios
+
+### **Optimizaciones de Base de Datos**
+
+- Índices únicos en `username`, `email`, `code`, `transactionId`
+- JOIN FETCH para evitar N+1 queries en relaciones
+- `@Transactional` para operaciones atómicas
+- Lazy loading configurado estratégicamente
+- Timestamps automáticos con `@CreationTimestamp` y `@UpdateTimestamp`
+
 ---
 
 ## 📦 DTOs (Data Transfer Objects)
@@ -685,6 +746,7 @@ Manejo centralizado de errores con `@RestControllerAdvice`:
 2. **Flexibilidad**: Estructura de respuesta diferente al modelo
 3. **Validación**: Anotaciones `@NotBlank`, `@NotNull`, `@Email`
 4. **Desacoplamiento**: Cambios en DB no afectan API
+5. **Campos Calculados**: Agregar datos derivados (ej: fullName, userCount)
 
 ### **DTOs Principales**
 
@@ -759,6 +821,17 @@ products       -- Productos del catálogo
 payments       -- Pagos y transacciones
 audit_logs     -- Registros de auditoría (nuevo)
 ```
+
+### **Esquema de Entidades**
+
+| Entidad      | Campos Principales                                                                    | Relaciones           |
+| ------------ | ------------------------------------------------------------------------------------- | -------------------- |
+| **User**     | id, username, email, password, firstName, lastName, phone, address, region, city      | ManyToMany → Role    |
+| **Role**     | id, name, description                                                                 | ManyToMany → User    |
+| **Category** | id, name, code, description, active                                                   | OneToMany → Product  |
+| **Product**  | id, code, name, price, stock, image, description, featured, active                    | ManyToOne → Category |
+| **Payment**  | id, userId, totalAmount, paymentMethod, status, transactionId, paymentToken, products | -                    |
+| **AuditLog** | id, username, roles, httpMethod, path, action, arguments, success, timestamp          | -                    |
 
 ---
 
@@ -926,8 +999,17 @@ Body:
   "lastName": "Pérez",
   "phone": "987654321",
   "address": "Av. Principal 456",
-  "region": "Valparaíso"
+  "region": "Valparaíso",
+  "city": "Viña del Mar"
 }
+```
+
+### **10. Actualizar Stock de Producto**
+
+```
+PATCH http://localhost:8080/productos/1/stock?cantidad=50
+Headers:
+  Authorization: Bearer <token-admin>
 ```
 
 ---
@@ -991,6 +1073,20 @@ Body:
 C:\Archivos de programa\Apache\maven\apache-maven-3.9.11\bin
 ```
 
+### **5. Payment Token demasiado largo**
+
+**Problema**: Error al crear pago - "Data too long for column 'payment_token'"
+
+**Causa**: Campo `payment_token` con longitud de 100, pero JWT necesita ~1000 caracteres
+
+**Solución**:
+
+```sql
+ALTER TABLE payments MODIFY COLUMN payment_token VARCHAR(1000);
+```
+
+O borrar la tabla y reiniciar para que Hibernate la recree con el tamaño correcto.
+
 ---
 
 ## 📝 Convenciones del Proyecto
@@ -1022,6 +1118,64 @@ feature/
 - `@Entity` + `@Table`: Entidades
 - `@Data` + `@NoArgsConstructor`: Lombok
 - `@PreAuthorize`: Seguridad a nivel de método
+- `@Transactional`: Control de transacciones
+- `@Valid`: Validación automática de DTOs
+
+---
+
+## 📋 Reglas de Negocio Implementadas
+
+### **Usuarios**
+
+- ✅ Username único (3-50 caracteres)
+- ✅ Email único y formato válido
+- ✅ Password mínimo 6 caracteres (encriptado con BCrypt)
+- ✅ No se puede eliminar el último admin del sistema
+- ✅ Soft delete con campo `enabled`
+- ✅ Auditoría de creación y actualización (timestamps)
+
+### **Roles**
+
+- ✅ Nombre debe empezar con `ROLE_`
+- ✅ Solo mayúsculas y guiones bajos permitidos
+- ✅ Roles del sistema (ADMIN, USER) no se pueden modificar/eliminar
+- ✅ No se puede eliminar rol con usuarios asignados
+- ✅ Contador de usuarios por rol (userCount)
+
+### **Productos**
+
+- ✅ SKU único generado automáticamente
+- ✅ Precio debe ser mayor a 0
+- ✅ Stock no puede ser negativo
+- ✅ Debe pertenecer a una categoría válida
+- ✅ Soft delete con campo `active`
+- ✅ Validación de disponibilidad antes de vender
+
+### **Categorías**
+
+- ✅ Código único definido manualmente
+- ✅ No se puede eliminar categoría con productos
+- ✅ Soft delete con campo `active`
+- ✅ Generación automática de siguiente SKU para productos
+
+### **Pagos**
+
+- ✅ Monto total debe ser mayor a 0
+- ✅ Debe incluir al menos un producto
+- ✅ Validación de stock antes de procesar
+- ✅ Actualización automática de stock al confirmar
+- ✅ Estados: PENDING → COMPLETED/FAILED/REFUNDED
+- ✅ Reembolsos solo para pagos completados
+- ✅ Token de pago temporal para seguridad
+
+### **Auditoría**
+
+- ✅ Registro automático de todas las operaciones
+- ✅ Captura de usuario autenticado y roles
+- ✅ Almacenamiento de argumentos del método
+- ✅ Registro de éxito/error con detalles
+- ✅ Filtrado por usuario, fecha, estado
+- ✅ Solo administradores pueden ver logs
 
 ---
 
@@ -1036,7 +1190,7 @@ feature/
 - ✅ Sistema de pagos con validación
 - ✅ Reembolsos de pagos
 - ✅ Auditoría completa con AOP 🆕
-- ✅ Gestión de stock
+- ✅ Gestión de stock (actualización individual y por venta)
 - ✅ Roles y permisos (ADMIN, USER)
 - ✅ Validaciones de negocio
 - ✅ Manejo centralizado de excepciones
@@ -1114,6 +1268,7 @@ feature/
 | GET    | `/activos`        | ❌    | Solo productos activos      |
 | POST   | `/`               | ADMIN | Crear producto (genera SKU) |
 | PUT    | `/{id}`           | ADMIN | Actualizar producto         |
+| PATCH  | `/{id}/stock`     | ADMIN | Actualizar solo el stock    |
 | DELETE | `/{id}`           | ADMIN | Eliminar producto           |
 
 ### **Categorías (`/categorias`)**
@@ -1198,6 +1353,8 @@ Desarrollado como proyecto de aprendizaje de Spring Boot + React.
 - 📊 Validaciones de negocio completas
 - 🔄 Relaciones ManyToMany optimizadas
 - 💾 Soft delete (usuarios y productos)
+- 📦 Gestión de stock automática en pagos
+- 📍 Información de ubicación (región y ciudad)
 
 ### **Auditoría y Trazabilidad**
 

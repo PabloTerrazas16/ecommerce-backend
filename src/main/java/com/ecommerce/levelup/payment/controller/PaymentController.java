@@ -5,6 +5,7 @@ import com.ecommerce.levelup.payment.dto.ProcessPaymentRequest;
 import com.ecommerce.levelup.payment.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Slf4j
 @RequestMapping("/pagos")
 @RequiredArgsConstructor
 public class PaymentController {
@@ -26,9 +28,11 @@ public class PaymentController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> initiatePayment(@Valid @RequestBody PaymentDTO paymentDTO) {
         try {
+            log.info("Received initiatePayment request: {}", paymentDTO);
             Map<String, Object> response = paymentService.initiatePayment(paymentDTO);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            log.error("Error in initiatePayment for payload {}", paymentDTO, e);
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -42,6 +46,7 @@ public class PaymentController {
             @Valid @RequestBody ProcessPaymentRequest request,
             @RequestHeader("Authorization") String paymentToken) {
         try {
+            log.info("Received confirmPayment request for id={} headerPresent={}", id, paymentToken != null && !paymentToken.isBlank());
             Map<String, Object> response = paymentService.confirmPayment(id, request, paymentToken);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
@@ -78,6 +83,19 @@ public class PaymentController {
             paymentService.refundPayment(id);
             Map<String, String> response = new HashMap<>();
             response.put("mensaje", "Pago reembolsado exitosamente");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+
+    @PostMapping("/{id}/confirmar-admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> adminConfirmPayment(@PathVariable Long id) {
+        try {
+            Map<String, Object> response = paymentService.adminConfirmPayment(id);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();

@@ -30,4 +30,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findLowStockProducts(@Param("minStock") Integer minStock);
     
     List<Product> findByFeaturedTrueAndActiveTrue();
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Product p SET p.stock = p.stock - :qty WHERE p.id = :id AND p.stock >= :qty")
+    int decreaseStockIfAvailable(@org.springframework.data.repository.query.Param("id") Long id, @org.springframework.data.repository.query.Param("qty") Integer qty);
 }

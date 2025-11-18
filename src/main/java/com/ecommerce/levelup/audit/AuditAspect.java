@@ -66,7 +66,6 @@ public class AuditAspect {
         try {
             Object result = pjp.proceed();
             log.setSuccess(true);
-            // Optionally store result summary
             auditService.save(log);
             return result;
         } catch (Throwable t) {

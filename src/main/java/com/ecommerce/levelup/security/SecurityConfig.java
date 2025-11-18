@@ -55,6 +55,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/payments/process").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
 
+                        // Allow payment confirmation endpoint to be called with a payment-specific token
+                        // Validation of the payment token is performed inside PaymentService.confirmPayment
+                        .requestMatchers("/pagos/*/confirmar").permitAll()
+
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()

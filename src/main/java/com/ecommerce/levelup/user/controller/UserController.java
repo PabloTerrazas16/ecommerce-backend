@@ -31,10 +31,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
-    /*
-      Actualizar usuario (Solo ADMIN o el mismo usuario)
-      PUT /api/usuarios/{id}
-     */
+   
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#id)")
     public ResponseEntity<?> updateUser(

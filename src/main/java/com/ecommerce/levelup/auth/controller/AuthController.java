@@ -16,6 +16,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.ecommerce.levelup.auth.dto.RecoverRequest;
+import com.ecommerce.levelup.auth.dto.ResetPasswordRequest;
+import com.ecommerce.levelup.auth.service.PasswordResetService;
+import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/autenticacion")
@@ -23,6 +28,12 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private PasswordResetService passwordResetService;
+
+    @Autowired
+    private Environment env;
 
    
     @PostMapping("/registrar")
@@ -129,6 +140,31 @@ public class AuthController {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+
+    @PostMapping("/recuperar")
+    public ResponseEntity<?> recover(@Valid @RequestBody RecoverRequest request) {
+        try {
+            Map<String, Object> resp = passwordResetService.createPasswordResetForEmail(request.getEmail());
+            return ResponseEntity.ok(resp);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+
+    @PostMapping("/reset")
+    public ResponseEntity<?> reset(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Las contraseñas no coinciden"));
+            }
+            Map<String, Object> resp = passwordResetService.resetPasswordWithToken(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(resp);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         }
     }
 }

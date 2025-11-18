@@ -62,7 +62,7 @@ public class Payment {
     @Column(unique = true, length = 100)
     private String transactionId;
 
-    @Column(unique = true, length = 1000)
+    @Column(unique = true, columnDefinition = "TEXT")
     private String paymentToken;
 
     @NotBlank(message = "Estado del Pago")
