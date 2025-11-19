@@ -47,10 +47,10 @@ public class SwaggerConfig {
                         .contact(new Contact()
                                 .name("E-Commerce Team")
                                 .email("admin@ecommerce.com")
-                                .url("https://github.com/PabloTerrazas16/ecommerce-backend", "https://github.com/UniDasp/react-ecommerce"))
+                                .url("https://github.com/PabloTerrazas16/ecommerce-backend"))
                         .license(new License()
                                 .name("Proyecto Educativo")
-                                .url("https://github.com/PabloTerrazas16/ecommerce-backend", "https://github.com/UniDasp/react-ecommerce")))
+                                .url("https://github.com/PabloTerrazas16/ecommerce-backend")))
                 .servers(List.of(
                         new Server()
                                 .url("http://localhost:8080")
