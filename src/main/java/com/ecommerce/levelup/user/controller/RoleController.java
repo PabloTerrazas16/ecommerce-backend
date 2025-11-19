@@ -3,6 +3,11 @@ package com.ecommerce.levelup.user.controller;
 import com.ecommerce.levelup.user.dto.CreateRoleRequest;
 import com.ecommerce.levelup.user.dto.RoleDTO;
 import com.ecommerce.levelup.user.service.RoleService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,21 +19,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "Roles", description = "Gestión de roles y permisos del sistema - Solo administradores")
 @RestController
 @RequestMapping("/roles")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // Solo los administradores pueden gestionar roles
+@SecurityRequirement(name = "Bearer Authentication")
+@PreAuthorize("hasRole('ADMIN')")
 public class RoleController {
 
     private final RoleService roleService;
 
-    
+    @Operation(summary = "Listar todos los roles", description = "Obtiene la lista completa de roles del sistema con contador de usuarios (requiere ADMIN)")
+    @ApiResponse(responseCode = "200", description = "Lista de roles")
     @GetMapping
     public ResponseEntity<List<RoleDTO>> getAllRoles() {
         return ResponseEntity.ok(roleService.getAllRoles());
     }
 
    
+    @Operation(summary = "Obtener rol por ID", description = "Retorna la información de un rol específico (requiere ADMIN)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Rol encontrado"),
+        @ApiResponse(responseCode = "404", description = "Rol no encontrado")
+    })
     @GetMapping("/{id}")
     public ResponseEntity<?> getRoleById(@PathVariable Long id) {
         try {
@@ -42,6 +55,11 @@ public class RoleController {
     }
 
   
+    @Operation(summary = "Crear rol", description = "Crea un nuevo rol personalizado. Debe empezar con ROLE_ (requiere ADMIN)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Rol creado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos o rol ya existe")
+    })
     @PostMapping
     public ResponseEntity<?> createRole(@Valid @RequestBody CreateRoleRequest request) {
         try {
@@ -55,6 +73,11 @@ public class RoleController {
     }
 
    
+    @Operation(summary = "Actualizar rol", description = "Actualiza un rol personalizado. No permite modificar ROLE_ADMIN ni ROLE_USER (requiere ADMIN)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Rol actualizado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "No se puede modificar rol del sistema")
+    })
     @PutMapping("/{id}")
     public ResponseEntity<?> updateRole(
             @PathVariable Long id,
@@ -70,6 +93,11 @@ public class RoleController {
     }
 
    
+    @Operation(summary = "Eliminar rol", description = "Elimina un rol personalizado. No permite eliminar roles del sistema ni roles con usuarios asignados (requiere ADMIN)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Rol eliminado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "No se puede eliminar rol del sistema o con usuarios asignados")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteRole(@PathVariable Long id) {
         try {

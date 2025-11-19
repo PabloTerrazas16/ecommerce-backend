@@ -12,7 +12,8 @@ Backend completo de e-commerce desarrollado con **Spring Boot 3.2.0** y **Java 1
 - **Spring Boot**: 3.2.0
 - **Spring Security**: Autenticación y autorización con JWT
 - **Spring Data JPA**: Persistencia de datos
-- **Spring AOP**: Auditoría con Aspect Oriented Programming 🆕
+- **Spring AOP**: Auditoría con Aspect Oriented Programming
+- **Springdoc OpenAPI**: Documentación Swagger UI automática 🆕
 - **MySQL**: Base de datos relacional (vía Laragon)
 - **Maven**: Gestión de dependencias
 - **Lombok**: Reducción de código boilerplate
@@ -1304,11 +1305,483 @@ feature/
 
 ---
 
+## 📖 Documentación Swagger/OpenAPI 🆕
+
+El proyecto incluye documentación interactiva completa de todos los endpoints mediante **Springdoc OpenAPI**.
+
+### **Acceder a Swagger UI**
+
+Una vez iniciado el servidor, accede a:
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+O directamente:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
+
+### **OpenAPI JSON/YAML**
+
+Descarga la especificación OpenAPI en:
+
+```
+http://localhost:8080/v3/api-docs          # JSON
+http://localhost:8080/v3/api-docs.yaml     # YAML
+```
+
+### **Características de la Documentación**
+
+✅ **Todos los controladores documentados**:
+
+- 🔐 **Autenticación**: Login, registro, cambio de contraseña, validación
+- 🛍️ **Productos**: CRUD completo, filtros, actualización de stock
+- 📂 **Categorías**: Gestión de categorías activas e inactivas
+- 👥 **Usuarios**: Administración de usuarios y activación/desactivación
+- 🎭 **Roles**: CRUD de roles con protección de roles del sistema
+- 💳 **Pagos**: Iniciar, confirmar, consultar y reembolsar pagos
+- 📊 **Auditoría**: Consultar logs con filtros avanzados
+- 🐛 **Debug**: Herramientas de desarrollo (solo perfil dev)
+
+✅ **Seguridad JWT integrada**:
+
+- Configuración de esquema Bearer Authentication
+- Botón "Authorize" para probar endpoints protegidos
+- Indicadores visuales de endpoints que requieren autenticación
+
+✅ **Descripciones detalladas**:
+
+- Resumen y descripción de cada endpoint
+- Parámetros documentados con tipos y validaciones
+- Códigos de respuesta HTTP (200, 400, 404, etc.)
+- Ejemplos de request/response
+
+### **Uso de Swagger UI**
+
+1. **Autenticarse**:
+
+   - Haz login en `/autenticacion/login` para obtener el token JWT
+   - Copia el token (sin "Bearer ")
+   - Clic en el botón **"Authorize"** (candado verde)
+   - Pega el token y confirma
+   - Ahora puedes probar endpoints protegidos
+
+2. **Probar endpoints**:
+
+   - Expande cualquier endpoint
+   - Clic en **"Try it out"**
+   - Completa los parámetros necesarios
+   - Clic en **"Execute"**
+   - Ver la respuesta en tiempo real
+
+3. **Ver modelos de datos**:
+   - Al final de cada grupo, ver "Schemas"
+   - Muestra la estructura de DTOs y entidades
+
+### **Configuración del Proyecto**
+
+La configuración de Swagger está en `SwaggerConfig.java`:
+
+```java
+@Configuration
+public class SwaggerConfig {
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+            .info(new Info()
+                .title("E-Commerce Backend API")
+                .version("1.0")
+                .description("API RESTful completa..."))
+            .addSecurityItem(new SecurityRequirement()
+                .addList("Bearer Authentication"))
+            .components(new Components()
+                .addSecuritySchemes("Bearer Authentication",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")));
+    }
+}
+```
+
+**Nota**: Los endpoints de Swagger están whitelistados en `SecurityConfig` para acceso sin autenticación.
+
+---
+
+## 🌐 Integración Frontend - Backend
+
+### **Arquitectura de Comunicación**
+
+El backend funciona como API REST stateless que se comunica con el frontend (React, Angular, Vue, etc.) mediante HTTP/HTTPS con formato JSON.
+
+```
+┌─────────────────┐         HTTP/HTTPS          ┌─────────────────┐
+│                 │    ← JSON Request/Response → │                 │
+│   FRONTEND      │                              │    BACKEND      │
+│  (React/Vue)    │         REST API             │  (Spring Boot)  │
+│                 │                              │                 │
+└─────────────────┘                              └─────────────────┘
+       │                                                 │
+       │ localStorage/sessionStorage                     │
+       │ (Guarda JWT token)                     ┌───────┴────────┐
+       │                                        │   MySQL DB      │
+       │                                        │   (Laragon)     │
+       └────────────────────────────────────────│                 │
+              Token en cada request              └─────────────────┘
+```
+
+### **Configuración CORS**
+
+El backend tiene CORS configurado en `CorsConfig.java` para permitir requests desde el frontend:
+
+```java
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+            .allowedOrigins("http://localhost:3000", "http://localhost:5173")
+            .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+            .allowedHeaders("*")
+            .allowCredentials(true);
+    }
+}
+```
+
+**Puertos comunes de frontend**:
+
+- React (Create React App): `http://localhost:3000`
+- Vite (React/Vue): `http://localhost:5173`
+- Angular: `http://localhost:4200`
+
+### **Flujo de Autenticación Frontend-Backend**
+
+#### **1. Login del Usuario**
+
+```javascript
+// Frontend - Ejemplo con Fetch API
+async function login(username, password) {
+  const response = await fetch("http://localhost:8080/autenticacion/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const data = await response.json();
+
+  if (response.ok) {
+    // Guardar token en localStorage
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("username", data.username);
+    localStorage.setItem("roles", JSON.stringify(data.roles));
+
+    return data;
+  } else {
+    throw new Error(data.error || "Login fallido");
+  }
+}
+```
+
+#### **2. Realizar Requests Autenticados**
+
+```javascript
+// Frontend - Agregar token en headers
+async function getUserProfile() {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch("http://localhost:8080/autenticacion/yo", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  return await response.json();
+}
+```
+
+#### **3. Interceptor Global (Axios)**
+
+```javascript
+// Frontend - Configurar Axios con interceptor
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "http://localhost:8080",
+  headers: { "Content-Type": "application/json" },
+});
+
+// Agregar token automáticamente a cada request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Manejo de errores 401 (token expirado)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Redirigir a login
+      localStorage.clear();
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+### **Endpoints Públicos vs Protegidos**
+
+#### **Públicos (sin token)**
+
+```javascript
+// Listar productos
+GET http://localhost:8080/productos
+
+// Obtener producto por ID
+GET http://localhost:8080/productos/1
+
+// Listar categorías activas
+GET http://localhost:8080/categorias/activas
+
+// Login
+POST http://localhost:8080/autenticacion/login
+
+// Registro
+POST http://localhost:8080/autenticacion/registrar
+```
+
+#### **Protegidos (requieren token)**
+
+```javascript
+// Obtener perfil del usuario actual
+GET http://localhost:8080/autenticacion/yo
+Authorization: Bearer <token>
+
+// Mis pagos
+GET http://localhost:8080/pagos/mis-pagos
+Authorization: Bearer <token>
+
+// Cambiar contraseña
+POST http://localhost:8080/autenticacion/cambiar-contrasena
+Authorization: Bearer <token>
+```
+
+#### **Solo ADMIN (requieren token + ROLE_ADMIN)**
+
+```javascript
+// Crear producto
+POST http://localhost:8080/productos
+Authorization: Bearer <token>
+
+// Gestionar usuarios
+GET http://localhost:8080/usuarios
+Authorization: Bearer <token>
+
+// Ver logs de auditoría
+GET http://localhost:8080/audit/logs
+Authorization: Bearer <token>
+```
+
+### **Manejo de Roles en Frontend**
+
+```javascript
+// Verificar si usuario es admin
+function isAdmin() {
+  const roles = JSON.parse(localStorage.getItem("roles") || "[]");
+  return roles.includes("ROLE_ADMIN");
+}
+
+// Renderizado condicional en React
+function AdminPanel() {
+  if (!isAdmin()) {
+    return <Navigate to="/unauthorized" />;
+  }
+
+  return (
+    <div>
+      <h1>Panel de Administración</h1>
+      {/* Contenido solo para admins */}
+    </div>
+  );
+}
+```
+
+### **Ejemplo Completo: Crear Producto**
+
+```javascript
+// Frontend - Formulario de producto
+async function createProduct(productData) {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch("http://localhost:8080/productos", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: productData.name,
+      description: productData.description,
+      price: productData.price,
+      stock: productData.stock,
+      imageUrl: productData.imageUrl,
+      categoryId: productData.categoryId,
+      active: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Error al crear producto");
+  }
+
+  return await response.json();
+}
+```
+
+### **Variables de Entorno Frontend**
+
+Crear archivo `.env` en el proyecto frontend:
+
+```env
+# React
+REACT_APP_API_URL=http://localhost:8080
+
+# Vite
+VITE_API_URL=http://localhost:8080
+
+# Angular
+NG_APP_API_URL=http://localhost:8080
+```
+
+Uso:
+
+```javascript
+// React
+const API_URL = process.env.REACT_APP_API_URL;
+
+// Vite
+const API_URL = import.meta.env.VITE_API_URL;
+```
+
+### **Estructura Recomendada Frontend**
+
+```
+frontend/
+├── src/
+│   ├── api/
+│   │   ├── axios.js           # Configuración de Axios
+│   │   ├── authApi.js         # Endpoints de autenticación
+│   │   ├── productApi.js      # Endpoints de productos
+│   │   ├── userApi.js         # Endpoints de usuarios
+│   │   └── paymentApi.js      # Endpoints de pagos
+│   │
+│   ├── contexts/
+│   │   └── AuthContext.jsx    # Context de autenticación
+│   │
+│   ├── components/
+│   │   ├── ProtectedRoute.jsx # HOC para rutas protegidas
+│   │   └── AdminRoute.jsx     # HOC para rutas de admin
+│   │
+│   └── pages/
+│       ├── Login.jsx
+│       ├── Products.jsx
+│       └── AdminDashboard.jsx
+```
+
+### **Testing de Integración**
+
+Herramientas para probar la API:
+
+1. **Swagger UI**: `http://localhost:8080/swagger-ui.html` ✅ Recomendado
+2. **Postman**: Importar colección desde OpenAPI JSON
+3. **Thunder Client**: Extensión de VS Code
+4. **cURL**: Comandos en terminal
+
+Ejemplo cURL:
+
+```bash
+# Login
+curl -X POST http://localhost:8080/autenticacion/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# Obtener productos (con token)
+curl -X GET http://localhost:8080/productos \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## 🔧 Integración Backend - Backend (Microservicios)
+
+Si deseas integrar este backend con otros servicios:
+
+### **Como API Gateway**
+
+```java
+// Agregar dependencia Spring Cloud Gateway en otro proyecto
+implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
+
+// Configurar rutas
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: ecommerce-backend
+          uri: http://localhost:8080
+          predicates:
+            - Path=/productos/**,/categorias/**,/pagos/**
+```
+
+### **Comunicación entre servicios**
+
+```java
+// Usar RestTemplate o WebClient para llamar a este backend
+@Service
+public class ExternalService {
+
+    private final RestTemplate restTemplate;
+
+    public ProductDTO getProduct(Long id) {
+        String url = "http://localhost:8080/productos/" + id;
+        return restTemplate.getForObject(url, ProductDTO.class);
+    }
+}
+```
+
+### **Service Discovery (Eureka)**
+
+```yaml
+# application.yml del microservicio
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    instance-id: ${spring.application.name}:${random.value}
+```
+
+---
+
 ## 📚 Referencias
 
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
 - [Spring Security + JWT](https://spring.io/guides/topicals/spring-security-architecture)
 - [Spring AOP](https://docs.spring.io/spring-framework/reference/core/aop.html)
+- [Springdoc OpenAPI](https://springdoc.org/)
 - [JJWT Documentation](https://github.com/jwtk/jjwt)
 - [Lombok](https://projectlombok.org/)
 

@@ -6,6 +6,13 @@ import com.ecommerce.levelup.auth.dto.LoginResponse;
 import com.ecommerce.levelup.auth.dto.RegisterRequest;
 import com.ecommerce.levelup.auth.service.AuthService;
 import com.ecommerce.levelup.user.dto.UserDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +29,7 @@ import com.ecommerce.levelup.auth.service.PasswordResetService;
 import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@Tag(name = "Autenticación", description = "Endpoints para registro, login, recuperación de contraseña y gestión de tokens JWT")
 @RestController
 @RequestMapping("/autenticacion")
 public class AuthController {
@@ -35,7 +43,14 @@ public class AuthController {
     @Autowired
     private Environment env;
 
-   
+    @Operation(
+        summary = "Registrar nuevo usuario",
+        description = "Crea una nueva cuenta de usuario en el sistema. El usuario se crea con rol USER por defecto."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Usuario registrado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Datos inválidos o usuario ya existe")
+    })
     @PostMapping("/registrar")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
@@ -53,7 +68,15 @@ public class AuthController {
         }
     }
 
-    
+    @Operation(
+        summary = "Iniciar sesión",
+        description = "Autentica un usuario y devuelve un token JWT para acceder a los endpoints protegidos."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Login exitoso", 
+            content = @Content(schema = @Schema(implementation = LoginResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
+    })
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
@@ -68,6 +91,15 @@ public class AuthController {
     }
 
   
+    @Operation(
+        summary = "Refrescar token JWT",
+        description = "Genera un nuevo token JWT a partir de uno existente que esté próximo a expirar."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Token refrescado exitosamente"),
+        @ApiResponse(responseCode = "401", description = "Token inválido o expirado")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping("/refrescar")
     public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String token) {
         try {
@@ -84,6 +116,15 @@ public class AuthController {
     }
 
     
+    @Operation(
+        summary = "Validar token JWT",
+        description = "Verifica si un token JWT es válido y no ha expirado."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Token validado"),
+        @ApiResponse(responseCode = "401", description = "Token inválido")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/validar")
     public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String token) {
         try {
@@ -105,6 +146,16 @@ public class AuthController {
     }
 
  
+    @Operation(
+        summary = "Obtener usuario actual",
+        description = "Retorna la información del usuario autenticado actualmente."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario obtenido exitosamente",
+            content = @Content(schema = @Schema(implementation = UserDTO.class))),
+        @ApiResponse(responseCode = "401", description = "No autenticado")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/yo")
     public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String token) {
         try {
@@ -118,6 +169,15 @@ public class AuthController {
     }
 
  
+    @Operation(
+        summary = "Cambiar contraseña",
+        description = "Permite al usuario autenticado cambiar su contraseña actual por una nueva."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Contraseña cambiada exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Contraseña actual incorrecta o validación fallida")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping("/cambiar-contrasena")
     public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         try {
