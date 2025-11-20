@@ -59,6 +59,7 @@ public class ProductService {
 
     @Transactional
     public ProductDTO createProduct(ProductDTO productDTO) {
+        // Validar categoría
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productDTO.getCategoryId()));
 
@@ -68,14 +69,17 @@ public class ProductService {
             sku = generateSku(category);
         }
         
+        // Validar código único
         if (productRepository.existsByCode(sku)) {
             throw new RuntimeException("Ya existe un producto con el código: " + sku);
         }
 
+        // Validar precio
         if (productDTO.getPrice() == null || productDTO.getPrice().doubleValue() <= 0) {
             throw new RuntimeException("El precio debe ser mayor a 0");
         }
 
+        // Validar stock
         if (productDTO.getStock() == null || productDTO.getStock() < 0) {
             throw new RuntimeException("El stock no puede ser negativo");
         }
@@ -97,13 +101,17 @@ public class ProductService {
         return convertToDTO(saved);
     }
     
-  
+    /**
+     * Generar código/SKU automáticamente basado en la categoría
+     * Formato: CODIGO_CATEGORIA + NUMERO_SECUENCIAL (ej: JM001, AC002, CO001)
+     */
     private String generateSku(Category category) {
         String prefix = category.getCode();
         if (prefix == null || prefix.isEmpty()) {
             prefix = "PROD";
         }
         
+        // Buscar el último código con este prefijo
         List<Product> productsInCategory = productRepository.findByCategory(category);
         int maxNumber = 0;
         
@@ -116,10 +124,12 @@ public class ProductService {
                         maxNumber = number;
                     }
                 } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    // Ignorar códigos con formato inválido
                 }
             }
         }
         
+        // Generar siguiente número
         int nextNumber = maxNumber + 1;
         return String.format("%s%03d", prefix, nextNumber);
     }
@@ -129,19 +139,23 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
 
+        // Validar categoría
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productDTO.getCategoryId()));
 
+        // Validar código único (excepto para el mismo producto)
         if (productDTO.getCode() != null && 
             !productDTO.getCode().equals(product.getCode()) && 
             productRepository.existsByCode(productDTO.getCode())) {
             throw new RuntimeException("Ya existe un producto con el código: " + productDTO.getCode());
         }
 
+        // Validar precio
         if (productDTO.getPrice() == null || productDTO.getPrice().doubleValue() <= 0) {
             throw new RuntimeException("El precio debe ser mayor a 0");
         }
 
+        // Validar stock
         if (productDTO.getStock() == null || productDTO.getStock() < 0) {
             throw new RuntimeException("El stock no puede ser negativo");
         }

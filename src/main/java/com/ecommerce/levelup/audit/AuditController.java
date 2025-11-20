@@ -1,9 +1,5 @@
 package com.ecommerce.levelup.audit;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,8 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 
-@Tag(name = "Auditor\u00eda", description = "Consulta de logs de auditor\u00eda del sistema mediante AOP - Solo ADMIN")
-@SecurityRequirement(name = "Bearer Authentication")
 @RestController
 @RequestMapping("/audit")
 @RequiredArgsConstructor
@@ -27,8 +21,6 @@ public class AuditController {
 
     private final AuditLogRepository repository;
 
-    @Operation(summary = "Listar logs de auditor\u00eda", description = "Obtiene logs paginados con filtros opcionales: username, path, success, fechas from/to. Ordenable por cualquier campo (default: timestamp,desc)")
-    @ApiResponse(responseCode = "200", description = "P\u00e1gina de logs de auditor\u00eda")
     @GetMapping("/logs")
     public ResponseEntity<Page<AuditLog>> list(
             @RequestParam(defaultValue = "0") int page,
@@ -89,8 +81,6 @@ public class AuditController {
         return ResponseEntity.ok(p);
     }
 
-    @Operation(summary = "Logs de usuario", description = "Obtiene todos los logs de auditor\u00eda de un usuario espec\u00edfico, ordenados por fecha descendente")
-    @ApiResponse(responseCode = "200", description = "P\u00e1gina de logs del usuario")
     @GetMapping("/logs/user/{username}")
     public ResponseEntity<Page<AuditLog>> getByUsername(
             @RequestParam(defaultValue = "0") int page,
@@ -105,8 +95,7 @@ public class AuditController {
         return ResponseEntity.ok(logs);
     }
 
-    @Operation(summary = "Operaciones fallidas", description = "Obtiene solo los logs de operaciones que resultaron en error (success=false)")
-    @ApiResponse(responseCode = "200", description = "P\u00e1gina de operaciones fallidas")
+   
     @GetMapping("/logs/failed")
     public ResponseEntity<Page<AuditLog>> getFailedOperations(
             @RequestParam(defaultValue = "0") int page,
@@ -119,8 +108,7 @@ public class AuditController {
         return ResponseEntity.ok(logs);
     }
 
-    @Operation(summary = "Logs recientes", description = "Obtiene los \u00faltimos 100 logs del sistema ordenados por fecha descendente")
-    @ApiResponse(responseCode = "200", description = "\u00daltimos 100 logs")
+   
     @GetMapping("/logs/recent")
     public ResponseEntity<Page<AuditLog>> getRecentLogs() {
         Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "timestamp"));

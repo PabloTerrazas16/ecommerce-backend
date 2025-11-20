@@ -76,11 +76,13 @@ public class PaymentService {
             throw new RuntimeException("Error al procesar los productos");
         }
 
+        // First save the payment to obtain an ID, then generate a payment token that includes that ID.
         Payment saved = paymentRepository.save(payment);
 
         String paymentToken = jwtUtil.generatePaymentToken(saved.getId(), user.getUsername());
         saved.setPaymentToken(paymentToken);
 
+        // Save again to persist the token
         saved = paymentRepository.save(saved);
 
         log.info("Payment saved with id={}, token={}", saved.getId(), paymentToken);
@@ -92,6 +94,7 @@ public class PaymentService {
         response.put("montoTotal", saved.getTotalAmount());
         response.put("mensaje", "Pago iniciado exitosamente. Use el token para confirmar el pago.");
 
+        // Also include English/standard keys for frontend compatibility
         response.put("id", saved.getId());
         response.put("paymentId", saved.getId());
         response.put("paymentToken", paymentToken);
@@ -162,6 +165,7 @@ public class PaymentService {
                         }
 
                         if (prodId != null && qty != null && qty > 0) {
+                            // Try to atomically decrease stock in DB. This avoids race conditions.
                             try {
                                 Product prod = productRepository.findById(prodId).orElse(null);
                                 if (prod == null) {
@@ -173,6 +177,7 @@ public class PaymentService {
                                         log.error("Not enough stock for product id={} (requested={})", prodId, qty);
                                         throw new RuntimeException("No hay suficiente stock para el producto id=" + prodId);
                                     }
+                                    // calculate new stock locally (best-effort) for logging
                                     int newStock = prod.getStock() - qty;
                                     log.info("Stock decreased for product id={} newStock={}", prodId, newStock);
                                 }
@@ -182,6 +187,7 @@ public class PaymentService {
                             }
                         }
                     }
+                    // force flush updates to database so any DB-level constraints surface here
                     try {
                         productRepository.flush();
                         log.info("Flushed product updates to DB for payment id={}", payment.getId());
@@ -200,6 +206,7 @@ public class PaymentService {
         }
 
         Payment updated = paymentRepository.save(payment);
+        // force flush to ensure DB persist and surface errors before returning
         try {
             paymentRepository.flush();
             log.info("Payment updated and flushed id={} status={}", updated.getId(), updated.getStatus());
@@ -226,11 +233,13 @@ public class PaymentService {
             throw new RuntimeException("Solo se pueden confirmar pagos en estado PENDING");
         }
 
+        // mark as completed and set transaction id/time
         payment.setStatus(Payment.STATUS_COMPLETED);
         payment.setStatusMessage("Pago confirmado manualmente por administrador");
         payment.setTransactionId("ADMIN-TXN-" + UUID.randomUUID().toString());
         payment.setCompletedAt(LocalDateTime.now());
 
+        // Reduce stock for products included
         if (payment.getProductsJson() != null) {
             try {
                 List<?> products = objectMapper.readValue(payment.getProductsJson(), List.class);

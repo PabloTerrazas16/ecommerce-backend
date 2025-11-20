@@ -4,9 +4,6 @@ import com.ecommerce.levelup.user.model.Role;
 import com.ecommerce.levelup.user.model.User;
 import com.ecommerce.levelup.user.repository.RoleRepository;
 import com.ecommerce.levelup.user.repository.UserRepository;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -20,7 +17,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-@Tag(name = "Debug", description = "Herramientas de desarrollo para resetear y consultar usuarios - Solo perfil dev")
+
 @RestController
 @RequestMapping("/debug")
 @RequiredArgsConstructor
@@ -32,8 +29,6 @@ public class DebugController {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Operation(summary = "Resetear admin", description = "Restaura la contrase\u00f1a del usuario admin a admin123 y asegura que tenga ROLE_ADMIN")
-    @ApiResponse(responseCode = "200", description = "Admin reseteado con \u00e9xito")
     @PostMapping("/reset-admin")
     @Transactional
     public ResponseEntity<?> resetAdmin() {
@@ -51,7 +46,7 @@ public class DebugController {
 
             User savedAdmin = userRepository.save(admin);
 
-            log.info("Admin reseteado exitosamente");
+            log.info("✅ Admin reseteado exitosamente");
             log.info("Username: admin");
             log.info("Password: admin123");
             log.info("Roles: {}", savedAdmin.getRoles());
@@ -70,8 +65,7 @@ public class DebugController {
         }
     }
 
-    @Operation(summary = "Info del admin", description = "Obtiene informaci\u00f3n detallada del usuario admin incluyendo roles")
-    @ApiResponse(responseCode = "200", description = "Informaci\u00f3n del admin")
+   
     @GetMapping("/admin-info")
     @Transactional
     public ResponseEntity<?> getAdminInfo() {
@@ -94,8 +88,6 @@ public class DebugController {
         }
     }
 
-    @Operation(summary = "Todos los usuarios", description = "Lista todos los usuarios del sistema con sus roles")
-    @ApiResponse(responseCode = "200", description = "Lista de usuarios")
     @GetMapping("/all-users")
     @Transactional
     public ResponseEntity<?> getAllUsers() {

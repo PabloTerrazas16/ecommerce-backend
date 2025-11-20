@@ -223,6 +223,7 @@ public class AuthService {
         dto.setPhone(user.getPhone());
         dto.setAddress(user.getAddress());
         dto.setRegion(user.getRegion());
+        dto.setCity(user.getCity());
         dto.setEnabled(user.getEnabled());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());

@@ -105,7 +105,7 @@ public class PasswordResetService {
                 );
 
                 Map<String, Object> payload = Map.of(
-                    "content", "", 
+                    "content", "", // short plain content optional
                     "embeds", List.of(embed)
                 );
 
@@ -129,6 +129,7 @@ public class PasswordResetService {
             }
         }
 
+        // If running with dev profile, optionally return token for testing
         boolean isDev = false;
         for (String p : env.getActiveProfiles()) if (p.equalsIgnoreCase("dev")) isDev = true;
         if (isDev) {
@@ -145,6 +146,7 @@ public class PasswordResetService {
     public Map<String, Object> resetPasswordWithToken(String token, String newPassword) {
         String tokenHash = hash(token);
 
+        // Fetch with pessimistic write lock to avoid race conditions (single-use guarantee)
         PasswordResetToken prt = tokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() -> new RuntimeException("Token inválido o expirado"));
 
@@ -159,11 +161,14 @@ public class PasswordResetService {
         User user = userRepository.findById(prt.getUserId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado para el token"));
 
+        // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
+        // Remove the token after successful use so it cannot be reused
         tokenRepository.delete(prt);
 
+        // Optionally revoke sessions / tokens here (not implemented)
 
         return Map.of("mensaje", "Contraseña actualizada exitosamente");
     }

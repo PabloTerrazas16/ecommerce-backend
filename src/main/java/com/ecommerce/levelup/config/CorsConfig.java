@@ -20,6 +20,7 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
+        // split and trim origins, ignore empty entries
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
             .map(String::trim)
             .filter(s -> s != null && !s.isEmpty())
@@ -30,6 +31,7 @@ public class CorsConfig {
 
         configuration.setAllowedHeaders(Arrays.asList("*"));
 
+        // allow credentials if frontend needs to send cookies/auth headers
         configuration.setAllowCredentials(true);
 
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
