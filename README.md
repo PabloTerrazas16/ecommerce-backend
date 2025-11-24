@@ -1,5 +1,7 @@
 # E-Commerce Backend - Spring Boot API
 
+Frontend: https://github.com/UniDasp/react-ecommerce
+
 ## 📋 Descripción
 
 Backend completo de e-commerce desarrollado con **Spring Boot 3.2.0** y **Java 17**. Implementa autenticación JWT, gestión de productos, categorías, usuarios, roles, pagos y auditoría completa con arquitectura de capas (Controller - Service - Repository).
