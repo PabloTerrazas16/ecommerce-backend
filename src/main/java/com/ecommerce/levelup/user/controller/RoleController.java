@@ -111,4 +111,45 @@ public class RoleController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
-}
+}/*ejemplo
+@Tag(name = "", description = "")
+@RestController
+@RequestMapping("/api")
+public class templateController {
+
+
+    @Operation(
+            summary = " frase (metodo)",
+            description = "Endpoint que reciba algo"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Mensaje procesado exitosamente"),
+            @ApiResponse(responseCode = "401", description = "No autenticado - Token inválido"),
+            @ApiResponse(responseCode = "400", description = "Parámetro mensaje es requerido")
+    })
+
+
+    @SecurityRequirement(name = "Bearer Authentication")
+    @GetMapping("/")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> "/"Get(
+            @Parameter(description = "Mensaje personalizado", required = true)
+            @RequestParam String mensaje) {
+
+        if (mensaje == null || mensaje.trim().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "El parámetro 'mensaje' es requerido");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("mensaje", "¡Hola! Recibí tu mensaje: " + mensaje);
+        response.put("mensajeOriginal", mensaje);
+        response.put("longitud", mensaje.length());
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("status", "success");
+
+        return ResponseEntity.ok(response);
+    }
+
+*/

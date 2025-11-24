@@ -48,6 +48,13 @@ public class SecurityConfig {
                         
                         .requestMatchers("/api/products/**").permitAll()
                         .requestMatchers("/api/categories/**").permitAll()
+                        
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/v3/api-docs").permitAll()
+                        .requestMatchers("/swagger-resources/**").permitAll()
+                        .requestMatchers("/webjars/**").permitAll()
 
                         .requestMatchers("/api/users/**").authenticated()
 
@@ -55,8 +62,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/payments/process").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
 
-                        // Allow payment confirmation endpoint to be called with a payment-specific token
-                        // Validation of the payment token is performed inside PaymentService.confirmPayment
+                      
                         .requestMatchers("/pagos/*/confirmar").permitAll()
 
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

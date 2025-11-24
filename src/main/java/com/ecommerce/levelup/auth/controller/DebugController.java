@@ -46,7 +46,7 @@ public class DebugController {
 
             User savedAdmin = userRepository.save(admin);
 
-            log.info("✅ Admin reseteado exitosamente");
+            log.info("Admin reseteado exitosamente");
             log.info("Username: admin");
             log.info("Password: admin123");
             log.info("Roles: {}", savedAdmin.getRoles());
